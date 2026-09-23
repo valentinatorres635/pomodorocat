@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cat Pomodoro</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root { --bg:#fbf7fb; --ink:#3b3350; --soft:#8b82a3; --focus:#f08aa6; --break:#6cc3b0; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#191919; --ink:#ece8f5; --soft:#9c95b3; } }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; }
+  body { background:var(--bg); color:var(--ink); font-family:"Fredoka", system-ui, sans-serif;
+         display:grid; place-items:center; overflow:hidden; }
+  .widget { display:flex; flex-direction:column; align-items:center; gap:4px; width:100%; max-width:240px; padding:8px; }
+  .cat { position:relative; width:130px; aspect-ratio:1; }
+  .cat img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .hidden { visibility:hidden; }
+  .mode { font-size:13px; color:var(--mode); font-weight:600; }
+  .time { font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1; }
+  .row { display:flex; gap:6px; margin-top:6px; }
+  button { font:inherit; font-size:13px; border:0; border-radius:999px; padding:5px 14px; cursor:pointer;
+           background:var(--mode); color:#fff; }
+  button.ghost { background:transparent; color:var(--soft); box-shadow:inset 0 0 0 1.5px var(--soft); }
+  button:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
+  .dots { display:flex; gap:4px; margin-top:4px; }
+  .dots span { width:6px; height:6px; border-radius:50%; background:var(--soft); opacity:.3; }
+  .dots span.on { background:var(--focus); opacity:1; }
+</style>
+</head>
+<body>
+<div class="widget" id="w">
+  <div class="cat" aria-hidden="true">
+    <img src="https://pomodorocat.com/illustrations/cat/fur/fur_white_base.svg" alt="">
+    <img id="pawL" src="https://pomodorocat.com/illustrations/cat/fur/fur_white_left-up.svg" alt="">
+    <img src="https://pomodorocat.com/illustrations/cat/face/face_pilot.svg" alt="">
+    <img id="pawR" src="https://pomodorocat.com/illustrations/cat/fur/fur_white_right-up.svg" alt="">
+  </div>
+  <div class="mode" id="mode">Focus</div>
+  <div class="time" id="time" role="timer">25:00</div>
+  <div class="row">
+    <button id="go">Start</button>
+    <button class="ghost" id="skip">Skip</button>
+    <button class="ghost" id="reset">Reset</button>
+  </div>
+  <div class="dots" id="dots"><span></span><span></span><span></span><span></span></div>
+</div>
+<script>
+  // Edit these to change the schedule (minutes)
+  const MIN = { focus:25, short:5, long:15 }, ROUNDS = 4;
+  const LABEL = { focus:"Focus", short:"Short break", long:"Long break" };
+
+  const $ = id => document.getElementById(id);
+  let mode = "focus", done = 0, left = MIN.focus * 60, end = null, tick = null, tap = null, flip = false;
+
+  function paint() {
+    const m = String(Math.floor(left / 60)).padStart(2, "0"), s = String(left % 60).padStart(2, "0");
+    $("time").textContent = `${m}:${s}`;
+    $("mode").textContent = LABEL[mode];
+    $("w").style.setProperty("--mode", mode === "focus" ? "var(--focus)" : "var(--break)");
+    $("go").textContent = end ? "Pause" : "Start";
+    [...$("dots").children].forEach((d, i) => d.classList.toggle("on", i < done % ROUNDS || (done && done % ROUNDS === 0 && mode === "long")));
+    document.title = end ? `${m}:${s} · ${LABEL[mode]}` : "Cat Pomodoro";
+  }
+
+  // Cat taps its paws while a focus session runs, rests with paws up otherwise
+  function paws(on) {
+    clearInterval(tap);
+    $("pawL").classList.remove("hidden"); $("pawR").classList.remove("hidden");
+    if (!on || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    tap = setInterval(() => { flip = !flip; $("pawL").classList.toggle("hidden", flip); $("pawR").classList.toggle("hidden", !flip); }, 350);
+  }
+
+  function chime() {
+    try {
+      const a = new AudioContext(), o = a.createOscillator(), g = a.createGain();
+      o.frequency.value = 880; g.gain.setValueAtTime(.2, a.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, a.currentTime + 1);
+      o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + 1);
+    } catch (e) {}
+  }
+
+  function stop() { clearInterval(tick); end = null; paws(false); }
+
+  function next() {
+    stop();
+    if (mode === "focus") { done++; mode = done % ROUNDS === 0 ? "long" : "short"; }
+    else mode = "focus";
+    left = MIN[mode] * 60; paint();
+  }
+
+  function start() {
+    end = Date.now() + left * 1000;
+    paws(mode === "focus");
+    tick = setInterval(() => {
+      left = Math.max(0, Math.round((end - Date.now()) / 1000));
+      if (left === 0) { chime(); next(); } else paint();
+    }, 250);
+    paint();
+  }
+
+  $("go").onclick = () => { if (end) { stop(); paint(); } else start(); };
+  $("skip").onclick = next;
+  $("reset").onclick = () => { stop(); mode = "focus"; done = 0; left = MIN.focus * 60; paint(); };
+  paint();
+</script>
+</body>
+</html>
