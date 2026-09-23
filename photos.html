@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo of the day</title>
+<style>
+  :root {
+    --cocoa:#2a1c16; --bark:#3b2820; --ember:#e39a52; --honey:#f6d29a; --linen:#fbeedd; --dust:#b89580;
+  }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; }
+  body {
+    background:
+      radial-gradient(ellipse at 50% 35%, rgba(227,154,82,.22), transparent 60%),
+      var(--cocoa);
+    color:var(--linen); font-family:Georgia, "Iowan Old Style", "Palatino Linotype", serif;
+    display:grid; place-items:center; overflow:hidden; padding:14px;
+  }
+  .frame { width:100%; max-width:520px; display:flex; flex-direction:column; gap:12px; }
+
+  .photo {
+    position:relative; aspect-ratio:4/3; border-radius:14px; overflow:hidden; background:var(--bark);
+    box-shadow:0 0 0 6px var(--bark), 0 18px 40px rgba(0,0,0,.45), 0 0 60px rgba(227,154,82,.18);
+  }
+  .photo img {
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    opacity:0; transition:opacity .9s ease;
+    filter:sepia(.12) saturate(1.05) brightness(.98);
+  }
+  .photo img.show { opacity:1; }
+  /* warm light leak on top of every photo */
+  .photo::after {
+    content:""; position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(160deg, rgba(246,210,154,.16), transparent 40%, rgba(42,28,22,.35));
+  }
+  .empty { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:24px;
+           color:var(--dust); font-size:15px; line-height:1.5; }
+
+  .bar { display:flex; align-items:center; gap:10px; }
+  .caption { flex:1; min-width:0; }
+  .caption .name { font-style:italic; font-size:17px; color:var(--honey);
+                   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .caption .meta { font-size:12px; color:var(--dust); margin-top:2px; }
+
+  button {
+    font:inherit; cursor:pointer; border:0; color:var(--linen); background:var(--bark);
+    width:38px; height:38px; border-radius:50%; font-size:18px; line-height:1;
+    box-shadow:inset 0 0 0 1px rgba(246,210,154,.18);
+    transition:background .2s, color .2s;
+  }
+  button:hover { background:var(--ember); color:var(--cocoa); }
+  button:focus-visible { outline:2px solid var(--honey); outline-offset:2px; }
+  button.today { width:auto; padding:0 14px; border-radius:999px; font-size:13px; }
+  button[hidden] { display:none; }
+
+  @media (prefers-reduced-motion: reduce) { .photo img { transition:none; } }
+</style>
+</head>
+<body>
+<main class="frame">
+  <div class="photo" id="photo">
+    <img id="imgA" alt="">
+    <img id="imgB" alt="">
+    <div class="empty" id="empty">Loading your photos…</div>
+  </div>
+  <div class="bar">
+    <button id="prev" aria-label="Previous photo">‹</button>
+    <div class="caption">
+      <div class="name" id="name">&nbsp;</div>
+      <div class="meta" id="meta">&nbsp;</div>
+    </div>
+    <button class="today" id="today" hidden>Today's photo</button>
+    <button id="next" aria-label="Next photo">›</button>
+  </div>
+</main>
+
+<script>
+  /* ---------- Settings ----------
+     On GitHub Pages (username.github.io/repo) the user and repo are detected automatically.
+     Fill these in only if you host the page somewhere else. */
+  const GITHUB_USER = "";
+  const GITHUB_REPO = "";
+  const BRANCH = "main";
+  const FOLDER = "pics";
+  /* Optional: list files here by hand to skip the GitHub lookup, e.g. ["beach.jpg", "tea.png"] */
+  const MANUAL_LIST = [];
+  /* -------------------------------- */
+
+  const $ = id => document.getElementById(id);
+  const IMAGE = /\.(jpe?g|png|gif|webp|avif)$/i;
+  const todayKey = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+  const dayNumber = Math.floor(new Date(todayKey + "T00:00:00Z") / 86400000);
+
+  let photos = [], current = 0, dailyIndex = 0, front = $("imgA"), back = $("imgB");
+
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+
+  function repoInfo() {
+    if (GITHUB_USER && GITHUB_REPO) return { user: GITHUB_USER, repo: GITHUB_REPO };
+    const host = location.hostname.match(/^([^.]+)\.github\.io$/);
+    if (!host) return null;
+    const first = location.pathname.split("/").filter(Boolean)[0];
+    const repo = first && !first.includes(".") ? first : `${host[1]}.github.io`;
+    return { user: host[1], repo };
+  }
+
+  async function loadList() {
+    if (MANUAL_LIST.length) return MANUAL_LIST.slice().sort();
+
+    // Reuse today's listing so the GitHub API is asked at most once a day
+    const cached = store.get("photoList");
+    if (cached && cached.day === todayKey && cached.files.length) return cached.files;
+
+    const info = repoInfo();
+    try {
+      if (!info) throw new Error("no repo");
+      const res = await fetch(`https://api.github.com/repos/${info.user}/${info.repo}/contents/${FOLDER}?ref=${BRANCH}`);
+      if (!res.ok) throw new Error(res.status);
+      const files = (await res.json())
+        .filter(f => f.type === "file" && IMAGE.test(f.name))
+        .map(f => f.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      store.set("photoList", { day: todayKey, files });
+      return files;
+    } catch (e) {
+      return cached ? cached.files : [];
+    }
+  }
+
+  function prettyName(file) {
+    return decodeURIComponent(file).replace(IMAGE, "").replace(/[-_]+/g, " ").trim();
+  }
+
+  function show(i) {
+    current = (i + photos.length) % photos.length;
+    const file = photos[current];
+    back.onload = () => {
+      back.classList.add("show"); front.classList.remove("show");
+      [front, back] = [back, front];
+    };
+    back.src = `${FOLDER}/${encodeURIComponent(file)}`;
+    back.alt = prettyName(file);
+    $("name").textContent = prettyName(file);
+    $("meta").textContent = current === dailyIndex
+      ? `Photo of the day · ${current + 1} of ${photos.length}`
+      : `${current + 1} of ${photos.length}`;
+    $("today").hidden = current === dailyIndex;
+    store.set("photoPick", { day: todayKey, index: current });
+  }
+
+  function msg(text) { $("empty").textContent = text; $("empty").hidden = false; }
+
+  async function init() {
+    photos = await loadList();
+    if (!photos.length) {
+      msg(repoInfo() || MANUAL_LIST.length
+        ? `No photos found in the “${FOLDER}” folder yet. Add some images there and refresh.`
+        : "Open this page from GitHub Pages, or fill in GITHUB_USER and GITHUB_REPO in the file.");
+      $("prev").disabled = $("next").disabled = true;
+      return;
+    }
+    $("empty").hidden = true;
+    dailyIndex = dayNumber % photos.length;
+
+    // Keep a manual pick for the rest of the day; a new day starts on the daily photo
+    const pick = store.get("photoPick");
+    show(pick && pick.day === todayKey && pick.index < photos.length ? pick.index : dailyIndex);
+  }
+
+  $("prev").onclick = () => photos.length && show(current - 1);
+  $("next").onclick = () => photos.length && show(current + 1);
+  $("today").onclick = () => show(dailyIndex);
+  document.addEventListener("keydown", e => {
+    if (!photos.length) return;
+    if (e.key === "ArrowLeft") show(current - 1);
+    if (e.key === "ArrowRight") show(current + 1);
+  });
+
+  // Swipe on phones
+  let startX = null;
+  $("photo").addEventListener("touchstart", e => startX = e.touches[0].clientX, { passive: true });
+  $("photo").addEventListener("touchend", e => {
+    if (startX === null || !photos.length) return;
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 40) show(current + (dx < 0 ? 1 : -1));
+    startX = null;
+  });
+
+  // If the page stays open past midnight, move to the new day's photo
+  setInterval(() => {
+    if (new Date().toLocaleDateString("en-CA") !== todayKey) location.reload();
+  }, 60000);
+
+  init();
+</script>
+</body>
+</html>
