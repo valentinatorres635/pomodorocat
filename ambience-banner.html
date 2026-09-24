@@ -88,8 +88,8 @@
       "..oooo....", ".oppppooo.", "opppppppo.", "oppppsppso", ".oooooooo.", "..........", ".b..b..b..", "b..b..b...", "...b..b...", ".........."] },
     fire: { pal:{ o:"#162f2c", r:"#e3a27f", y:"#f5d79f", w:"#786a5e" }, rows:[
       "....o.....", "...oro....", "...orro...", "..orrro.o.", ".orryrroro", ".oryyyrro.", ".oryyyyro.", "..oryyro..", ".wwoooowww", ".........."] },
-    vinyl: { pal:{ o:"#162f2c", d:"#1f4038", g:"#3e5a50", l:"#ebbbd8", h:"#869881" }, rows:[
-      "...oooo...", ".oodddhoo.", ".oddgddho.", "odgoolgddo", "odgollgddo", "oddgllgddo", "oddgoogddo", ".oddggddo.", ".oodddoo..", "...oooo..."] },
+    cafe: { pal:{ o:"#162f2c", c:"#786a5e", p:"#f6fbfa", s:"#bdccbe" }, rows:[
+      "...s.s....", "..s.s.....", "oooooooo..", "occccccoo.", "oppppppo.o", "oppppppo.o", "oppppppoo.", ".oppppo...", "..oooo....", "ooooooooo."] },
     wind: { pal:{ o:"#162f2c", l:"#73aa69", g:"#45755c" }, rows:[
       "......ooo.", "....oollo.", "...ollllo.", "..olllgo..", ".ollgllo..", ".olgllo...", ".oglloo...", "..goo.....", ".g........", ".........."] },
   };
@@ -100,7 +100,7 @@
      audio file. Plain <audio> works in more places than live Web Audio, including Notion embeds. */
   const SOUNDS = [
     { id:"rain",  label:"Rain" }, { id:"fire", label:"Fireplace" },
-    { id:"vinyl", label:"Vinyl" }, { id:"wind", label:"Wind" },
+    { id:"cafe", label:"Café" }, { id:"wind", label:"Wind" },
   ];
   const LEN = 32, RATE = 32000;
   const players = {};
@@ -132,10 +132,44 @@
       loop(brown).connect(filter("lowpass", 420)).connect(gain(.55)).connect(out);
       bursts(40, 260, t => burst(t, { dur: .02 + Math.random() * .05, freq: 1200 + Math.random() * 3500, level: .12 + Math.random() * .35 }));
     }
-    if (id === "vinyl") {
-      loop(white).connect(filter("highpass", 3000)).connect(gain(.05)).connect(out);
-      loop(brown).connect(filter("lowpass", 180)).connect(gain(.12)).connect(out);   // soft rumble of the turntable
-      bursts(40, 400, t => burst(t, { dur: .004 + Math.random() * .012, freq: 1500 + Math.random() * 2500, level: .6 + Math.random() * .6, type: "bandpass" }));
+    if (id === "cafe") {
+      // soft room tone
+      loop(brown).connect(filter("lowpass", 350)).connect(gain(.25)).connect(out);
+      // murmur: several distant voices, each a band of noise that rises and falls in syllables
+      const talk = filter("lowpass", 2600); talk.connect(gain(.9)).connect(out);
+      for (let v = 0; v < 7; v++) {
+        const f1 = filter("bandpass", 350 + Math.random() * 450, 3), f2 = filter("bandpass", 1100 + Math.random() * 900, 4);
+        const env = gain(0), mix = gain(1);
+        const src = loop(white); src.connect(f1).connect(mix); src.connect(f2).connect(gain(.5)).connect(mix);
+        mix.connect(env).connect(talk);
+        let t = Math.random() * 2;
+        while (t < LEN - 1) {                       // a phrase of syllables, then a pause
+          const words = 4 + Math.floor(Math.random() * 10);
+          for (let k = 0; k < words && t < LEN - .6; k++) {
+            const len = .09 + Math.random() * .16, peak = .25 + Math.random() * .35;
+            env.gain.setTargetAtTime(peak, t, .025); env.gain.setTargetAtTime(peak * .15, t + len, .03);
+            t += len + .03 + Math.random() * .08;
+          }
+          env.gain.setTargetAtTime(0, t, .08);
+          t += .6 + Math.random() * 2.5;
+        }
+        env.gain.setTargetAtTime(0, LEN - .8, .1);
+      }
+      // cups and spoons clinking now and then
+      const clink = (t) => {
+        [1, 2.76].forEach((m, k) => {
+          const o = off.createOscillator(), g = gain(0), f = 2300 + Math.random() * 1500;
+          o.frequency.value = f * m; o.type = "sine";
+          g.gain.setValueAtTime(k ? .025 : .06, t); g.gain.exponentialRampToValueAtTime(.0001, t + (k ? .15 : .35));
+          o.connect(g).connect(out); o.start(t); o.stop(t + .4);
+        });
+      };
+      for (let t = 1 + Math.random() * 2; t < LEN - 1; t += 2 + Math.random() * 5) { clink(t); if (Math.random() < .35) clink(t + .12 + Math.random() * .1); }
+      // the espresso machine steaming once in the loop
+      const steam = off.createBufferSource(); steam.buffer = white;
+      const sf = filter("highpass", 2500), sg = gain(0), st = 12 + Math.random() * 8;
+      sg.gain.setTargetAtTime(.04, st, .3); sg.gain.setTargetAtTime(0, st + 3.5, .4);
+      steam.connect(sf).connect(sg).connect(out); steam.start(0);
     }
     if (id === "wind") {
       const bp = filter("bandpass", 420, .9), g = gain(.6);
@@ -232,6 +266,5 @@
     paint();
   })();
 </script>
-<script src="theme.js"></script>
 </body>
 </html>

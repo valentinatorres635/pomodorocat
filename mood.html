@@ -51,7 +51,7 @@
 </main>
 
 <script>
-  /* ---------- Pixel palette (from background.gif) ---------- */
+  /* ---------- Pixel palette (rainy-window colours) ---------- */
   const C = {
     ink:"#162f2c", glass:"#c9e6e2", glassEdge:"#a9d3cf", water:"#9ec9c3", waterEdge:"#86b5ae",
     stemGlass:"#6f9a86", stemWater:"#5f8a78", rim:"#e7f3f0", hi:"#f6fbfa",
@@ -252,7 +252,6 @@
     ctx.fillRect(x + b, y, w - 2 * b, h); ctx.fillRect(x, y + b, w, h - 2 * b);
     ctx.fillStyle = fill; ctx.fillRect(x + b, y + b, w - 2 * b, h - 2 * b);
   }
-  function loadImage(src) { return new Promise(r => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; }); }
 
   async function download() {
     const W = 1080, H = 1350, c = document.createElement("canvas");
@@ -261,23 +260,15 @@
     ctx.imageSmoothingEnabled = false;
     try { await Promise.all([document.fonts.load('40px "Press Start 2P"'), document.fonts.load('500 40px "Pixelify Sans"')]); } catch (e) {}
 
-    // background: the pixel scene if available, otherwise deep green
-    const bg = await loadImage(window.BACKGROUND ?? "background.gif");
-    if (bg) {
-      const s = Math.max(W / bg.width, H / bg.height), w = bg.width * s, h = bg.height * s;
-      ctx.drawImage(bg, (W - w) / 2, (H - h) / 2, w, h);
-      ctx.fillStyle = "rgba(22,47,44,.2)"; ctx.fillRect(0, 0, W, H);
-    } else { ctx.fillStyle = "#3e5a50"; ctx.fillRect(0, 0, W, H); }
+    // plain pale background
+    ctx.fillStyle = "#d1ebe8"; ctx.fillRect(0, 0, W, H);
 
-    // card: stepped shadow, notched ink outline, moss + pale frame
-    ctx.fillStyle = "rgba(22,47,44,.45)"; ctx.fillRect(116, 124, 860, 1130); ctx.fillRect(124, 116, 860, 1130);
     pixelBox(ctx, 100, 100, 880, 1150, "#e7f3f0", C.ink, 12);
     ctx.strokeStyle = "#587463"; ctx.lineWidth = 12; ctx.strokeRect(118, 118, 844, 1114);
     ctx.strokeStyle = "#d1ebe8"; ctx.lineWidth = 12; ctx.strokeRect(130, 130, 820, 1090);
 
     ctx.textAlign = "center";
     ctx.font = '52px "Press Start 2P", monospace';
-    ctx.fillStyle = "#ebbbd8"; ctx.fillText("Mood garden", W / 2 + 6, 256);
     ctx.fillStyle = "#3e5a50"; ctx.fillText("Mood garden", W / 2, 250);
     ctx.font = '500 40px "Pixelify Sans", monospace'; ctx.fillStyle = "#587463";
     ctx.fillText(`My bouquet for ${weekLabel}`, W / 2, 320);
@@ -304,6 +295,5 @@
   setInterval(() => { if (localDate(new Date()) !== localDate(now)) location.reload(); }, 60000);
   render();
 </script>
-<script src="theme.js"></script>
 </body>
 </html>
