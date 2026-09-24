@@ -22,6 +22,8 @@
   .sound button svg { flex:none; }
   .sound .state { display:none; } /* the yellow tile shows which sounds are on */
   .foot { font-size:13px; color:var(--moss); }
+  .foot.blocked { color:var(--ink); background:var(--pink); padding:3px 6px; box-shadow:0 0 0 2px var(--ink); }
+  .foot.blocked[hidden] { display:none; }
 
   /* ---- banner layout: title on the left, four sounds across ---- */
   body { padding:12px; }
@@ -53,6 +55,7 @@
   <div class="side">
     <div class="mixer" id="mixer"></div>
     <div class="row-foot"><p class="foot">Turn on as many as you like and set each volume</p>
+      <p class="foot blocked" id="blocked" hidden>Sound is blocked in this view. Open the widget in its own tab (••• → View original).</p>
       <button class="px-btn" id="stopAll" disabled>Stop all</button></div>
   </div>
 </main>
@@ -91,7 +94,7 @@
   const icon = id => `<svg viewBox="0 0 10 10" width="20" height="20" aria-hidden="true">${rects(ICONS[id].rows.map(r => r.split("")), ICONS[id].pal)}</svg>`;
 
   /* ================= Cozy sounds (made in the browser, no files needed) ================= */
-  let ctx = null, noise = {};
+  let ctx = null, noise = {}, master = null, outEl = null;
   const SOUNDS = [
     { id:"rain",  label:"Rain" }, { id:"fire", label:"Fireplace" },
     { id:"vinyl", label:"Vinyl" }, { id:"wind", label:"Wind" },
@@ -101,6 +104,15 @@
   function initAudio() {
     if (ctx) return;
     ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Send everything through an <audio> element so it plays as regular media:
+    // iPhones don't mute it on silent mode, and embedded pages allow it more often.
+    master = ctx.createGain();
+    try {
+      const dest = ctx.createMediaStreamDestination();
+      master.connect(dest);
+      outEl = new Audio(); outEl.srcObject = dest.stream;
+      outEl.play().catch(() => { master.disconnect(); master.connect(ctx.destination); });
+    } catch (e) { master.connect(ctx.destination); }
     const len = ctx.sampleRate * 4;
     const white = ctx.createBuffer(1, len, ctx.sampleRate), brown = ctx.createBuffer(1, len, ctx.sampleRate);
     const w = white.getChannelData(0), b = brown.getChannelData(0);
@@ -122,7 +134,7 @@
     tick();
   }
   function build(id) {
-    const out = gain(0); out.connect(ctx.destination);
+    const out = gain(0); out.connect(master);
     nodes[id] = { out, on: false };
     if (id === "rain") {
       loop(noise.white).connect(filter("highpass", 500)).connect(filter("lowpass", 5000)).connect(gain(.28)).connect(out);
@@ -145,7 +157,14 @@
     }
   }
   function setSound(id, on, vol) {
-    initAudio(); if (ctx.state === "suspended") ctx.resume();
+    initAudio();
+    if (ctx.state !== "running") ctx.resume().catch(() => {});
+    if (outEl && outEl.paused) outEl.play().catch(() => {});
+    // if the browser still refuses, say how to fix it
+    setTimeout(() => {
+      const blocked = on && ctx.state !== "running";
+      $("blocked").hidden = !blocked;
+    }, 600);
     if (!nodes[id]) build(id);
     nodes[id].on = on;
     nodes[id].out.gain.setTargetAtTime(on ? vol : 0, ctx.currentTime, .4);
