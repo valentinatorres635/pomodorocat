@@ -33,7 +33,7 @@
   .sound { padding:10px 12px 8px; gap:8px; }
   .sound button svg { width:24px; height:24px; }
   .row-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-  .row-foot .px-btn { font-size:14px; padding:5px 10px; }
+  .row-foot .play { display:inline-flex; align-items:center; gap:8px; font-size:15px; padding:7px 14px; }
   @media (max-width: 860px) {
     .card { grid-template-columns:1fr; gap:14px; }
     .intro { flex-direction:row; align-items:baseline; gap:14px; max-width:none; }
@@ -54,9 +54,11 @@
 
   <div class="side">
     <div class="mixer" id="mixer"></div>
-    <div class="row-foot"><p class="foot">Turn on as many as you like and set each volume</p>
-      <p class="foot blocked" id="blocked" hidden>Sound is blocked in this view. Open the widget in its own tab (••• → View original).</p>
-      <button class="px-btn" id="stopAll" disabled>Stop all</button></div>
+    <div class="row-foot">
+      <p class="foot" id="hint">Pick the sounds you like, then press play</p>
+      <button class="px-btn primary play" id="play" disabled><svg id="playIcon" viewBox="0 0 6 6" width="12" height="12" aria-hidden="true"></svg><span id="playText">Getting sounds ready…</span></button>
+    </div>
+    <p class="foot blocked" id="blocked" hidden>Sound was blocked in this view. Open the widget in its own tab (••• → View original).</p>
   </div>
 </main>
 
@@ -93,112 +95,142 @@
   };
   const icon = id => `<svg viewBox="0 0 10 10" width="20" height="20" aria-hidden="true">${rects(ICONS[id].rows.map(r => r.split("")), ICONS[id].pal)}</svg>`;
 
-  /* ================= Cozy sounds (made in the browser, no files needed) ================= */
-  let ctx = null, noise = {}, master = null, outEl = null;
+  /* ================= Cozy sounds =================
+     Each sound is generated once (32-second seamless loop) and then played as a normal looping
+     audio file. Plain <audio> works in more places than live Web Audio, including Notion embeds. */
   const SOUNDS = [
     { id:"rain",  label:"Rain" }, { id:"fire", label:"Fireplace" },
     { id:"vinyl", label:"Vinyl" }, { id:"wind", label:"Wind" },
   ];
-  const nodes = {};
+  const LEN = 32, RATE = 32000;
+  const players = {};
+  let playing = false;
 
-  function initAudio() {
-    if (ctx) return;
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    // Send everything through an <audio> element so it plays as regular media:
-    // iPhones don't mute it on silent mode, and embedded pages allow it more often.
-    master = ctx.createGain();
-    try {
-      const dest = ctx.createMediaStreamDestination();
-      master.connect(dest);
-      outEl = new Audio(); outEl.srcObject = dest.stream;
-      outEl.play().catch(() => { master.disconnect(); master.connect(ctx.destination); });
-    } catch (e) { master.connect(ctx.destination); }
-    const len = ctx.sampleRate * 4;
-    const white = ctx.createBuffer(1, len, ctx.sampleRate), brown = ctx.createBuffer(1, len, ctx.sampleRate);
+  function renderSound(id) {
+    const off = new OfflineAudioContext(1, LEN * RATE, RATE);
+    const n = RATE * 4, white = off.createBuffer(1, n, RATE), brown = off.createBuffer(1, n, RATE);
     const w = white.getChannelData(0), b = brown.getChannelData(0);
     let last = 0;
-    for (let i = 0; i < len; i++) { w[i] = Math.random() * 2 - 1; last = (last + .02 * (Math.random() * 2 - 1)) / 1.02; b[i] = last * 3.5; }
-    noise = { white, brown };
-  }
-  const loop = buf => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.start(); return s; };
-  const filter = (type, freq, q = .7) => { const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; return f; };
-  const gain = v => { const g = ctx.createGain(); g.gain.value = v; return g; };
-  function burst(out, { dur, freq, level, type = "highpass" }) {
-    const s = ctx.createBufferSource(); s.buffer = noise.white;
-    const f = filter(type, freq, type === "bandpass" ? 1.5 : .7), g = gain(0), t = ctx.currentTime;
-    g.gain.setValueAtTime(level, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
-    s.connect(f).connect(g).connect(out); s.start(t, Math.random() * 3, dur + .02);
-  }
-  function scheduler(id, out, min, max, make) {
-    const tick = () => { if (nodes[id].on) make(out); nodes[id].timer = setTimeout(tick, min + Math.random() * (max - min)); };
-    tick();
-  }
-  function build(id) {
-    const out = gain(0); out.connect(master);
-    nodes[id] = { out, on: false };
+    for (let i = 0; i < n; i++) { w[i] = Math.random() * 2 - 1; last = (last + .02 * (Math.random() * 2 - 1)) / 1.02; b[i] = last * 3.5; }
+    const loop = buf => { const s = off.createBufferSource(); s.buffer = buf; s.loop = true; s.start(0); return s; };
+    const filter = (type, f, q = .7) => { const x = off.createBiquadFilter(); x.type = type; x.frequency.value = f; x.Q.value = q; return x; };
+    const gain = v => { const g = off.createGain(); g.gain.value = v; return g; };
+    const out = gain(1); out.connect(off.destination);
+    const bursts = (min, max, make) => { for (let t = .05; t < LEN - .3; t += (min + Math.random() * (max - min)) / 1000) make(t); };
+    const burst = (t, { dur, freq, level, type = "highpass" }) => {
+      const s = off.createBufferSource(); s.buffer = white;
+      const f = filter(type, freq, type === "bandpass" ? 1.5 : .7), g = gain(0);
+      g.gain.setValueAtTime(level, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+      s.connect(f).connect(g).connect(out); s.start(t, Math.random() * 3, dur + .02);
+    };
     if (id === "rain") {
-      loop(noise.white).connect(filter("highpass", 500)).connect(filter("lowpass", 5000)).connect(gain(.28)).connect(out);
-      loop(noise.brown).connect(filter("lowpass", 900)).connect(gain(.35)).connect(out);
-      scheduler(id, out, 20, 120, o => burst(o, { dur: .03, freq: 2500 + Math.random() * 3000, level: .05 + Math.random() * .08 }));
+      loop(white).connect(filter("highpass", 500)).connect(filter("lowpass", 5000)).connect(gain(.28)).connect(out);
+      loop(brown).connect(filter("lowpass", 900)).connect(gain(.35)).connect(out);
+      bursts(20, 120, t => burst(t, { dur: .03, freq: 2500 + Math.random() * 3000, level: .05 + Math.random() * .08 }));
     }
     if (id === "fire") {
-      loop(noise.brown).connect(filter("lowpass", 420)).connect(gain(.55)).connect(out);
-      scheduler(id, out, 40, 260, o => burst(o, { dur: .02 + Math.random() * .05, freq: 1200 + Math.random() * 3500, level: .12 + Math.random() * .35 }));
+      loop(brown).connect(filter("lowpass", 420)).connect(gain(.55)).connect(out);
+      bursts(40, 260, t => burst(t, { dur: .02 + Math.random() * .05, freq: 1200 + Math.random() * 3500, level: .12 + Math.random() * .35 }));
     }
     if (id === "vinyl") {
-      loop(noise.white).connect(filter("highpass", 3500)).connect(gain(.018)).connect(out);
-      scheduler(id, out, 60, 520, o => burst(o, { dur: .004 + Math.random() * .01, freq: 1800 + Math.random() * 2000, level: .25 + Math.random() * .4, type: "bandpass" }));
+      loop(white).connect(filter("highpass", 3000)).connect(gain(.05)).connect(out);
+      loop(brown).connect(filter("lowpass", 180)).connect(gain(.12)).connect(out);   // soft rumble of the turntable
+      bursts(40, 400, t => burst(t, { dur: .004 + Math.random() * .012, freq: 1500 + Math.random() * 2500, level: .6 + Math.random() * .6, type: "bandpass" }));
     }
     if (id === "wind") {
       const bp = filter("bandpass", 420, .9), g = gain(.6);
-      loop(noise.brown).connect(bp).connect(g).connect(out);
-      const lfo = ctx.createOscillator(), depth = gain(260); lfo.frequency.value = .07; lfo.connect(depth).connect(bp.frequency); lfo.start();
-      const lfo2 = ctx.createOscillator(), depth2 = gain(.35); lfo2.frequency.value = .11; lfo2.connect(depth2).connect(g.gain); lfo2.start();
+      loop(brown).connect(bp).connect(g).connect(out);
+      // slow gusts that complete whole cycles inside the loop, so it repeats without a seam
+      const l1 = off.createOscillator(), d1 = gain(260); l1.frequency.value = 2 / LEN; l1.connect(d1).connect(bp.frequency); l1.start(0);
+      const l2 = off.createOscillator(), d2 = gain(.35); l2.frequency.value = 3 / LEN; l2.connect(d2).connect(g.gain); l2.start(0);
     }
+    return off.startRendering();
   }
-  function setSound(id, on, vol) {
-    initAudio();
-    if (ctx.state !== "running") ctx.resume().catch(() => {});
-    if (outEl && outEl.paused) outEl.play().catch(() => {});
-    // if the browser still refuses, say how to fix it
-    setTimeout(() => {
-      const blocked = on && ctx.state !== "running";
-      $("blocked").hidden = !blocked;
-    }, 600);
-    if (!nodes[id]) build(id);
-    nodes[id].on = on;
-    nodes[id].out.gain.setTargetAtTime(on ? vol : 0, ctx.currentTime, .4);
+
+  function toWav(buf) {
+    const data = buf.getChannelData(0), len = data.length, view = new DataView(new ArrayBuffer(44 + len * 2));
+    let peak = 0; for (let i = 0; i < len; i++) peak = Math.max(peak, Math.abs(data[i]));
+    const scale = peak > .98 ? .98 / peak : 1;
+    const str = (o, t) => [...t].forEach((c, i) => view.setUint8(o + i, c.charCodeAt(0)));
+    str(0, "RIFF"); view.setUint32(4, 36 + len * 2, true); str(8, "WAVE"); str(12, "fmt ");
+    view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+    view.setUint32(24, buf.sampleRate, true); view.setUint32(28, buf.sampleRate * 2, true);
+    view.setUint16(32, 2, true); view.setUint16(34, 16, true); str(36, "data"); view.setUint32(40, len * 2, true);
+    for (let i = 0; i < len; i++) view.setInt16(44 + i * 2, Math.max(-1, Math.min(1, data[i] * scale)) * 32767, true);
+    return URL.createObjectURL(new Blob([view], { type: "audio/wav" }));
   }
+
+  const PLAY = rects(["c.....","ccc...","ccccc.","ccccc.","ccc...","c....."].map(r => r.split("")), { c:"currentColor" });
+  const PAUSE = rects(["cc..cc","cc..cc","cc..cc","cc..cc","cc..cc","cc..cc"].map(r => r.split("")), { c:"currentColor" });
 
   $("mixer").innerHTML = SOUNDS.map(s => {
     const st = settings.sounds[s.id] || { vol: .5 };
     return `<div class="sound px-panel" id="s-${s.id}">
-      <button data-id="${s.id}" aria-pressed="false">${icon(s.id)}${s.label}<span class="state">off</span></button>
+      <button data-id="${s.id}" aria-pressed="false">${icon(s.id)}${s.label}<span class="state"></span></button>
       <input class="px-range" type="range" min="0" max="1" step="0.01" value="${st.vol}" data-id="${s.id}" aria-label="${s.label} volume">
     </div>`;
   }).join("");
-  function paintSound(id) {
-    const st = settings.sounds[id], box = $("s-" + id);
-    box.classList.toggle("on", st.on);
-    box.querySelector("button").setAttribute("aria-pressed", st.on);
-    box.querySelector(".state").textContent = st.on ? "on" : "off";
+  // which sounds are picked is remembered; playback always starts paused (browsers require a click)
+  SOUNDS.forEach(s => { settings.sounds[s.id] = { vol: .5, on: false, ...(settings.sounds[s.id] || {}) }; });
+
+  function paint() {
+    SOUNDS.forEach(s => {
+      const st = settings.sounds[s.id], box = $("s-" + s.id);
+      box.classList.toggle("on", st.on);
+      box.querySelector("button").setAttribute("aria-pressed", st.on);
+    });
+    const any = SOUNDS.some(s => settings.sounds[s.id].on);
+    $("playIcon").innerHTML = playing ? PAUSE : PLAY;
+    if (!$("play").disabled) $("playText").textContent = playing ? "Pause" : "Play";
+    $("play").setAttribute("aria-label", playing ? "Pause sounds" : "Play sounds");
+    $("hint").textContent = !any ? "Pick the sounds you like, then press play"
+      : playing ? "Playing. Tap a sound to add or remove it" : "Press play to listen";
   }
-  SOUNDS.forEach(s => { settings.sounds[s.id] = { vol: .5, ...(settings.sounds[s.id] || {}), on: false }; paintSound(s.id); });
+
+  function apply(id) {
+    const p = players[id], st = settings.sounds[id];
+    if (!p) return;
+    p.volume = st.vol;
+    if (playing && st.on) { if (p.paused) p.play().catch(blocked); }
+    else if (!p.paused) p.pause();
+  }
+  function blocked() { $("blocked").hidden = false; playing = false; paint(); }
+
+  $("play").onclick = () => {
+    if (!SOUNDS.some(s => settings.sounds[s.id].on)) settings.sounds.rain.on = true; // nothing picked yet: start with rain
+    playing = !playing;
+    $("blocked").hidden = true;
+    SOUNDS.forEach(s => apply(s.id));
+    paint(); save();
+  };
   $("mixer").querySelectorAll("button").forEach(b => b.onclick = () => {
     const st = settings.sounds[b.dataset.id]; st.on = !st.on;
-    setSound(b.dataset.id, st.on, st.vol); paintSound(b.dataset.id); save();
+    apply(b.dataset.id); paint(); save();
   });
-  function paintStop() { $("stopAll").disabled = !SOUNDS.some(s => settings.sounds[s.id].on); }
-  $("stopAll").onclick = () => {
-    SOUNDS.forEach(s => { const st = settings.sounds[s.id]; if (st.on) { st.on = false; setSound(s.id, false, st.vol); paintSound(s.id); } });
-    paintStop(); save();
-  };
-  $("mixer").addEventListener("click", paintStop);
   $("mixer").querySelectorAll("input").forEach(r => r.oninput = () => {
-    const st = settings.sounds[r.dataset.id]; st.vol = +r.value;
-    if (st.on) setSound(r.dataset.id, true, st.vol);
-    save();
+    settings.sounds[r.dataset.id].vol = +r.value;
+    apply(r.dataset.id); save();
   });
+
+  // pause everything if the page is hidden by Notion or the browser stops one of the sounds
+  document.addEventListener("visibilitychange", () => { if (document.hidden && playing) { playing = false; SOUNDS.forEach(s => apply(s.id)); paint(); } });
+
+  (async () => {
+    paint();
+    try {
+      for (const s of SOUNDS) {
+        const a = new Audio(toWav(await renderSound(s.id)));
+        a.loop = true; a.preload = "auto"; a.volume = settings.sounds[s.id].vol;
+        players[s.id] = a;
+      }
+      $("play").disabled = false;
+    } catch (e) {
+      $("playText").textContent = "Sounds unavailable";
+      $("hint").textContent = "This browser can't make the sounds. Try Chrome, Edge, Firefox or Safari.";
+      return;
+    }
+    paint();
+  })();
 </script>
 <script src="theme.js"></script>
 </body>
