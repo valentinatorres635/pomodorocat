@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mood garden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --amber:#ed862b; --peach:#dc5713; --rose:#a04005; --dusk:#411308;
+    --wood:#5a380b; --line:#411308; --cream:#f6dcbc; --paper:#fcefe0; --glow:#f7b774; --muted:#875702; --berry:#cb5925;
+    --round:"Fredoka", ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif;
+    --bubble:"Cherry Bomb One", "Fredoka", ui-rounded, system-ui, sans-serif;
+  }
+  * { box-sizing:border-box; margin:0; }
+  html, body { height:100%; }
+  body {
+    background:
+      linear-gradient(180deg, rgba(237,134,43,.18), rgba(65,19,8,.32)),
+      var(--bg-image, none) center / cover no-repeat,
+      linear-gradient(180deg, var(--amber) 0%, var(--peach) 38%, var(--rose) 70%, var(--dusk) 100%);
+    font-family:var(--round); color:var(--wood);
+    display:grid; place-items:center; overflow:hidden; padding:14px; position:relative;
+  }
+  body::before {
+    content:""; position:absolute; left:50%; top:50%; width:90vmin; height:90vmin; transform:translate(-50%,-50%);
+    background:radial-gradient(circle, rgba(247,183,116,.35) 0%, transparent 60%); pointer-events:none;
+  }
+  body::after {
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.16; mix-blend-mode:multiply; z-index:5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .mote { position:absolute; bottom:-10px; border-radius:50%; background:var(--glow);
+          box-shadow:0 0 8px 2px rgba(247,183,116,.8); opacity:0; animation:drift linear infinite; pointer-events:none; }
+  @keyframes drift { 0% { transform:translate(0,0); opacity:0 } 15% { opacity:.9 } 85% { opacity:.6 } 100% { transform:translate(30px,-105vh); opacity:0 } }
+
+  .card {
+    position:relative; z-index:1; width:100%; max-width:380px; padding:16px 16px 14px;
+    background:var(--paper); border:8px solid var(--wood); border-radius:22px;
+    outline:2.5px solid var(--line);
+    box-shadow:inset 0 0 0 2px var(--cream), 8px 9px 0 rgba(65,19,8,.55), 0 0 50px rgba(237,134,43,.5);
+    display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center;
+  }
+  h1 { font-family:var(--bubble); font-weight:400; font-size:30px; line-height:1; color:var(--berry);
+       letter-spacing:.5px; text-shadow:2px 2px 0 var(--cream), 3px 3px 0 rgba(65,19,8,.25); }
+  .sub { font-size:13px; font-weight:500; color:var(--muted); margin-top:-4px; }
+
+  .bouquet { width:100%; max-width:230px; aspect-ratio:1; position:relative; }
+  .bouquet svg { width:100%; height:100%; overflow:visible; }
+  .bouquet .hint { position:absolute; left:0; right:0; top:30%; font-size:14px; font-weight:500; color:var(--muted); padding:0 24px; }
+  .bloom { transform-box:fill-box; transform-origin:center; animation:pop .5s cubic-bezier(.3,1.6,.5,1); }
+  @keyframes pop { from { transform:scale(0) } to { transform:scale(1) } }
+
+  .week { display:flex; gap:6px; justify-content:center; }
+  .day { width:36px; display:flex; flex-direction:column; align-items:center; gap:2px; font-size:11px; font-weight:500; color:var(--muted); }
+  .day .slot { width:30px; height:30px; border-radius:50%; background:var(--cream); border:1.5px dashed rgba(90,56,11,.35);
+               display:grid; place-items:center; }
+  .day .slot.filled { border-style:solid; border-color:var(--line); background:#fff4e8; }
+  .day.today { color:var(--berry); font-weight:600; }
+  .day.today .slot { box-shadow:0 0 0 2px var(--glow), 0 0 10px var(--glow); }
+
+  .ask { font-size:16px; font-weight:600; margin-top:2px; }
+  .moods { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; width:100%; }
+  .mood, .save {
+    font-family:var(--round); font-weight:500; color:var(--wood); cursor:pointer;
+    background:var(--cream); border:2px solid var(--line); box-shadow:3px 3px 0 var(--line);
+    transition:transform .1s, box-shadow .1s, background .15s;
+  }
+  .mood { font-size:13px; border-radius:16px; padding:6px 4px 5px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+  .mood:hover, .save:hover { background:var(--glow); }
+  .mood:active, .save:active { transform:translate(3px,3px); box-shadow:0 0 0 var(--line); }
+  .mood[aria-pressed="true"] { background:var(--glow); transform:translate(2px,2px); box-shadow:1px 1px 0 var(--line); }
+  .mood:focus-visible, .save:focus-visible { outline:3px solid var(--glow); outline-offset:2px; }
+  .save { font-size:14px; border-radius:999px; padding:7px 18px; background:#f3b98a; }
+  .save:disabled { opacity:.45; cursor:default; transform:none; box-shadow:3px 3px 0 var(--line); background:var(--cream); }
+  .foot { font-size:11px; color:var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) { .mote { display:none; } .bloom { animation:none; } }
+</style>
+</head>
+<body>
+<main class="card">
+  <h1>Mood garden</h1>
+  <p class="sub" id="sub">This week's bouquet</p>
+
+  <div class="bouquet">
+    <svg viewBox="0 0 200 200" id="jar" aria-label="This week's bouquet"></svg>
+    <p class="hint" id="hint">Pick a flower to start your bouquet ♡</p>
+  </div>
+
+  <div class="week" id="week"></div>
+
+  <p class="ask" id="ask">How are you feeling today?</p>
+  <div class="moods" id="moods"></div>
+  <button class="save" id="save">Download bouquet ♡</button>
+  <p class="foot">A new bouquet starts every Monday</p>
+</main>
+
+<script>
+  /* Your background image: same one as the photo page, or any path in the repo */
+  const BACKGROUND = "background.jpg";
+
+  const MOODS = [
+    { id:"joyful",   label:"Joyful",   petal:"#e9a93a", center:"#5a380b", petals:12, shape:"long"  },
+    { id:"calm",     label:"Calm",     petal:"#b596ad", center:"#f3d39a", petals:6,  shape:"round" },
+    { id:"loved",    label:"Loved",    petal:"#e08c7d", center:"#862906", petals:5,  shape:"heart" },
+    { id:"tired",    label:"Tired",    petal:"#a3aeae", center:"#f1dcb8", petals:8,  shape:"round" },
+    { id:"down",     label:"Down",     petal:"#6f8aa0", center:"#ed862b", petals:5,  shape:"round" },
+    { id:"stressed", label:"Stressed", petal:"#dc5713", center:"#411308", petals:10, shape:"long"  },
+  ];
+  const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const LINE = "#411308";
+  // Tip of each weekday's stem, fanning out of the vase as the week fills
+  const SPOTS = [
+    { x:100, y:40, r:17 }, { x:64, y:58, r:15 }, { x:136, y:56, r:15 }, { x:82, y:24, r:13 },
+    { x:120, y:22, r:13 }, { x:44, y:86, r:13 }, { x:156, y:84, r:13 },
+  ];
+
+  const $ = id => document.getElementById(id);
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const localDate = d => d.toLocaleDateString("en-CA");
+  const now = new Date();
+  const dayIdx = (now.getDay() + 6) % 7;
+  const monday = new Date(now); monday.setDate(now.getDate() - dayIdx);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  const weekKey = localDate(monday);
+  const fmt = d => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const weekLabel = `${fmt(monday)} – ${fmt(sunday)}`;
+
+  let data = store.get("moodGarden");
+  if (!data || data.week !== weekKey) data = { week: weekKey, picks: Array(7).fill(null) };
+
+  function flowerSVG(m, cx, cy, r, extraClass = "") {
+    const parts = [];
+    for (let i = 0; i < m.petals; i++) {
+      const a = (360 / m.petals) * i;
+      if (m.shape === "long")
+        parts.push(`<ellipse cx="${cx}" cy="${cy - r * .6}" rx="${r * .2}" ry="${r * .55}" transform="rotate(${a} ${cx} ${cy})"/>`);
+      else if (m.shape === "heart")
+        parts.push(`<path transform="rotate(${a} ${cx} ${cy})" d="M${cx} ${cy - r * .15} C ${cx - r * .75} ${cy - r * .55}, ${cx - r * .45} ${cy - r * 1.1}, ${cx} ${cy - r * .85} C ${cx + r * .45} ${cy - r * 1.1}, ${cx + r * .75} ${cy - r * .55}, ${cx} ${cy - r * .15} Z"/>`);
+      else
+        parts.push(`<circle cx="${cx}" cy="${cy - r * .55}" r="${r * .5}" transform="rotate(${a} ${cx} ${cy})"/>`);
+    }
+    return `<g class="${extraClass}">
+      <g fill="${m.petal}" stroke="${LINE}" stroke-width="1.4" stroke-linejoin="round">${parts.join("")}</g>
+      <circle cx="${cx}" cy="${cy}" r="${r * .32}" fill="${m.center}" stroke="${LINE}" stroke-width="1.4"/>
+      <circle cx="${cx - r * .1}" cy="${cy - r * .1}" r="${r * .09}" fill="#fff" opacity=".7"/>
+    </g>`;
+  }
+
+  // A round glass bud vase: stems show through the glass and water, with rim, thick base and highlights
+  const VASE = "M86 112 L86 126 C86 134 54 144 54 168 C54 186 72 194 100 194 C128 194 146 186 146 168 C146 144 114 134 114 126 L114 112 Z";
+
+  function jarMarkup(justAdded = -1) {
+    let stems = "", leaves = "", blooms = "";
+    data.picks.forEach((id, i) => {
+      if (!id) return;
+      const m = MOODS.find(x => x.id === id), s = SPOTS[i];
+      const off = (s.x - 100);
+      const baseX = 100 + off * .28, neckX = 100 + off * .1;
+      stems += `<path d="M${baseX} 186 C ${baseX} 160, ${neckX} 140, ${neckX} 118 S ${s.x - off * .1} ${s.y + 30}, ${s.x} ${s.y}" />`;
+      const lx = (neckX + s.x) / 2, ly = (118 + s.y) / 2 + 8, dir = off < 0 ? -1 : 1;
+      leaves += `<path d="M${lx} ${ly} q ${dir * 12} -10 ${dir * 20} -2 q ${dir * -8} 10 ${dir * -20} 2 z" />`;
+      blooms += flowerSVG(m, s.x, s.y, s.r, i === justAdded ? "bloom" : "");
+    });
+    return `
+      <defs>
+        <linearGradient id="glass" x1="0" x2="1">
+          <stop offset="0" stop-color="#f3dcc0" stop-opacity=".75"/>
+          <stop offset=".22" stop-color="#fff3e6" stop-opacity=".22"/>
+          <stop offset=".7" stop-color="#fff3e6" stop-opacity=".12"/>
+          <stop offset="1" stop-color="#e8c7a0" stop-opacity=".7"/>
+        </linearGradient>
+        <linearGradient id="water" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#f0cfa6" stop-opacity=".45"/>
+          <stop offset="1" stop-color="#e0ad78" stop-opacity=".6"/>
+        </linearGradient>
+        <radialGradient id="caustic"><stop offset="0" stop-color="#f7b774" stop-opacity=".9"/><stop offset="1" stop-color="#f7b774" stop-opacity="0"/></radialGradient>
+        <clipPath id="inside"><path d="${VASE}"/></clipPath>
+      </defs>
+      <!-- windowsill -->
+      <rect x="6" y="192" width="188" height="10" rx="3" fill="#875702" stroke="${LINE}" stroke-width="1.8"/>
+      <ellipse cx="106" cy="193" rx="58" ry="4" fill="rgba(65,19,8,.28)"/>
+      <ellipse cx="84" cy="194" rx="26" ry="3" fill="url(#caustic)"/>
+      <!-- stems behind the glass -->
+      <g fill="none" stroke="#6f6a22" stroke-width="3" stroke-linecap="round">${stems}</g>
+      <g fill="none" stroke="${LINE}" stroke-width=".8" opacity=".35">${stems}</g>
+      <!-- water, glass body, base -->
+      <g clip-path="url(#inside)">
+        <rect x="40" y="146" width="120" height="60" fill="url(#water)"/>
+        <path d="M50 146 Q100 150 150 146" fill="none" stroke="#fff" stroke-width="1.6" opacity=".8"/>
+        <path d="${VASE}" fill="url(#glass)"/>
+        <ellipse cx="100" cy="190" rx="36" ry="5" fill="#fff" opacity=".35"/>
+      </g>
+      <path d="${VASE}" fill="none" stroke="${LINE}" stroke-width="2" stroke-linejoin="round"/>
+      <!-- rim -->
+      <ellipse cx="100" cy="112" rx="15" ry="3.5" fill="rgba(246,222,196,.65)" stroke="${LINE}" stroke-width="1.8"/>
+      <!-- glass highlights -->
+      <path d="M64 158 C62 170 66 180 74 186" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" opacity=".85"/>
+      <path d="M90 116 L90 128" stroke="#fff" stroke-width="2.4" stroke-linecap="round" opacity=".8"/>
+      <circle cx="70" cy="152" r="2" fill="#fff" opacity=".9"/>
+      <path d="M138 162 C140 170 138 178 132 184" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".55"/>
+      <!-- leaves and flowers above the rim -->
+      <g fill="#a39a3c" stroke="${LINE}" stroke-width="1.1" stroke-linejoin="round">${leaves}</g>
+      ${blooms}`;
+  }
+
+  function render(justAdded = -1) {
+    $("jar").innerHTML = jarMarkup(justAdded);
+    $("hint").hidden = data.picks.some(Boolean);
+    $("save").disabled = !data.picks.some(Boolean);
+    $("sub").textContent = `This week's bouquet · ${weekLabel}`;
+
+    $("week").innerHTML = DAYS.map((d, i) => {
+      const m = MOODS.find(x => x.id === data.picks[i]);
+      const icon = m ? `<svg viewBox="0 0 40 40" width="24" height="24">${flowerSVG(m, 20, 20, 16)}</svg>` : "";
+      return `<div class="day ${i === dayIdx ? "today" : ""}" title="${m ? d + ": " + m.label : d}">
+        <div class="slot ${m ? "filled" : ""}">${icon}</div>${d}</div>`;
+    }).join("");
+
+    const picked = data.picks[dayIdx];
+    $("ask").textContent = picked ? "Today's flower is in the vase ♡" : "How are you feeling today?";
+    $("moods").innerHTML = MOODS.map(m => `
+      <button class="mood" data-id="${m.id}" aria-pressed="${picked === m.id}">
+        <svg viewBox="0 0 40 40" width="32" height="32" aria-hidden="true">${flowerSVG(m, 20, 20, 16)}</svg>${m.label}
+      </button>`).join("");
+    $("moods").querySelectorAll(".mood").forEach(b => b.onclick = () => {
+      data.picks[dayIdx] = data.picks[dayIdx] === b.dataset.id ? null : b.dataset.id;
+      store.set("moodGarden", data);
+      render(dayIdx);
+    });
+  }
+
+  /* ---------- Download the week's bouquet as a PNG card ---------- */
+  function svgToImage(svg) {
+    return new Promise((res, rej) => {
+      const img = new Image();
+      img.onload = () => res(img); img.onerror = rej;
+      img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+    });
+  }
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  async function download() {
+    const W = 1080, H = 1350, c = document.createElement("canvas");
+    c.width = W; c.height = H;
+    const ctx = c.getContext("2d");
+    try { await Promise.all([document.fonts.load('80px "Cherry Bomb One"'), document.fonts.load('600 36px "Fredoka"')]); } catch (e) {}
+
+    // golden-hour background
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    [["#ed862b", 0], ["#dc5713", .35], ["#a04005", .68], ["#411308", 1]].forEach(([col, s]) => g.addColorStop(s, col));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    const glow = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, 620);
+    glow.addColorStop(0, "rgba(247,183,116,.45)"); glow.addColorStop(1, "rgba(247,183,116,0)");
+    ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+    // card with hard shadow and wooden border
+    ctx.fillStyle = "rgba(65,19,8,.55)"; roundRect(ctx, 110, 110, 880, 1150, 60); ctx.fill();
+    ctx.fillStyle = "#5a380b"; roundRect(ctx, 80, 80, 880, 1150, 60); ctx.fill();
+    ctx.lineWidth = 6; ctx.strokeStyle = "#411308"; ctx.stroke();
+    ctx.fillStyle = "#fcefe0"; roundRect(ctx, 104, 104, 832, 1102, 42); ctx.fill();
+
+    // title
+    ctx.textAlign = "center";
+    ctx.font = '96px "Cherry Bomb One", "Fredoka", sans-serif';
+    ctx.fillStyle = "rgba(65,19,8,.25)"; ctx.fillText("Mood garden", W / 2 + 7, 247);
+    ctx.fillStyle = "#f6dcbc"; ctx.fillText("Mood garden", W / 2 + 4, 244);
+    ctx.fillStyle = "#cb5925"; ctx.fillText("Mood garden", W / 2, 240);
+    ctx.font = '500 38px "Fredoka", sans-serif'; ctx.fillStyle = "#875702";
+    ctx.fillText(`My bouquet · ${weekLabel}`, W / 2, 310);
+
+    // the vase
+    const vase = await svgToImage(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 210" width="640" height="672" overflow="visible">${jarMarkup()}</svg>`);
+    ctx.drawImage(vase, (W - 640) / 2, 340, 640, 672);
+
+    // week row
+    const startX = W / 2 - 3 * 108;
+    for (let i = 0; i < 7; i++) {
+      const x = startX + i * 108, y = 1080, m = MOODS.find(k => k.id === data.picks[i]);
+      ctx.beginPath(); ctx.arc(x, y, 38, 0, Math.PI * 2);
+      ctx.fillStyle = m ? "#fff4e8" : "#f6dcbc"; ctx.fill();
+      ctx.lineWidth = 3; ctx.setLineDash(m ? [] : [8, 7]); ctx.strokeStyle = m ? "#411308" : "rgba(90,56,11,.35)"; ctx.stroke();
+      ctx.setLineDash([]);
+      if (m) {
+        const f = await svgToImage(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="60" height="60">${flowerSVG(m, 20, 20, 16)}</svg>`);
+        ctx.drawImage(f, x - 30, y - 30, 60, 60);
+      }
+      ctx.font = '500 28px "Fredoka", sans-serif'; ctx.fillStyle = "#875702";
+      ctx.fillText(DAYS[i], x, y + 76);
+    }
+
+    const a = document.createElement("a");
+    a.download = `mood-bouquet-${weekKey}.png`;
+    a.href = c.toDataURL("image/png");
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  $("save").onclick = () => download().catch(() => alert("The bouquet couldn't be saved. Try opening the widget in its own tab."));
+
+  /* ---------- Scene ---------- */
+  if (BACKGROUND) {
+    const bg = new Image();
+    bg.onload = () => document.body.style.setProperty("--bg-image", `url("${BACKGROUND}")`);
+    bg.src = BACKGROUND;
+  }
+  for (let i = 0; i < 12; i++) {
+    const m = document.createElement("span"), size = 2 + Math.random() * 4;
+    m.className = "mote";
+    Object.assign(m.style, { left: Math.random() * 100 + "%", width: size + "px", height: size + "px",
+      animationDuration: 9 + Math.random() * 10 + "s", animationDelay: -Math.random() * 15 + "s" });
+    document.body.appendChild(m);
+  }
+  setInterval(() => { if (localDate(new Date()) !== localDate(now)) location.reload(); }, 60000);
+  render();
+</script>
+</body>
+</html>
