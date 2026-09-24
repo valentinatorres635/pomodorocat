@@ -13,7 +13,7 @@ html, body { background:transparent !important; }
 body {
   font-family:var(--pixel); color:var(--ink);
   -webkit-font-smoothing:none; font-smooth:never;
-  display:grid; place-items:center; overflow:hidden; padding:16px; position:relative;
+  display:grid; place-items:center; overflow:hidden; padding:8px; position:relative;
 }
 img, svg { image-rendering:pixelated; }
 svg { shape-rendering:crispEdges; }

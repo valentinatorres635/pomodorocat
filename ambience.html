@@ -330,5 +330,23 @@
     save();
   });
 </script>
+<script>
+  /* Shrinks the widget to fit the Notion embed, whatever size the embed is */
+  (function () {
+    const fit = () => {
+      const card = document.querySelector(".px-card");
+      if (!card) return;
+      card.style.zoom = 1;
+      const pad = 16, w = card.offsetWidth + pad, h = card.offsetHeight + pad;
+      const s = Math.min(1, innerWidth / w, innerHeight / h);
+      card.style.zoom = Math.max(.4, Math.floor(s * 50) / 50);
+    };
+    addEventListener("resize", fit);
+    new ResizeObserver(fit).observe(document.body);
+    if (document.fonts) document.fonts.ready.then(fit);
+    addEventListener("load", fit);
+    fit();
+  })();
+</script>
 </body>
 </html>

@@ -15,7 +15,7 @@
 <style>
   .widget { width:100%; max-width:228px; padding:18px 12px 14px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
   .gear { position:absolute; top:12px; right:12px; padding:5px 6px; font-size:13px; }
-  .cat { position:relative; width:106px; aspect-ratio:1; }
+  .cat { position:relative; width:128px; aspect-ratio:2 / 1; margin-top:4px; }
   .cat img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; image-rendering:auto; }
   .hidden { visibility:hidden; }
   .mode { font-size:15px; font-weight:600; padding:3px 8px; background:var(--mode); box-shadow:0 0 0 2px var(--ink); }
@@ -166,6 +166,24 @@
   $("skip").onclick = next;
   $("reset").onclick = reset;
   paint();
+</script>
+<script>
+  /* Shrinks the widget to fit the Notion embed, whatever size the embed is */
+  (function () {
+    const fit = () => {
+      const card = document.querySelector(".px-card");
+      if (!card) return;
+      card.style.zoom = 1;
+      const pad = 16, w = card.offsetWidth + pad, h = card.offsetHeight + pad;
+      const s = Math.min(1, innerWidth / w, innerHeight / h);
+      card.style.zoom = Math.max(.4, Math.floor(s * 50) / 50);
+    };
+    addEventListener("resize", fit);
+    new ResizeObserver(fit).observe(document.body);
+    if (document.fonts) document.fonts.ready.then(fit);
+    addEventListener("load", fit);
+    fit();
+  })();
 </script>
 </body>
 </html>
