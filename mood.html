@@ -13,16 +13,16 @@
   if (/[?&]dark\b/.test(location.search)) document.documentElement.style.colorScheme = "dark";
 </script>
 <style>
-  .card { width:100%; max-width:380px; padding:20px 18px 16px; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; }
-  .bouquet { position:relative; width:100%; max-width:224px; aspect-ratio:1; }
+  .card { width:100%; max-width:336px; padding:20px 14px 16px; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; }
+  .bouquet { position:relative; width:100%; max-width:208px; aspect-ratio:1; }
   .bouquet svg { width:100%; height:100%; display:block; }
   .hint { position:absolute; left:0; right:0; top:22%; font-size:15px; color:var(--moss); padding:0 18px; }
   .hint[hidden] { display:none; }
   .pop { animation:pop .45s steps(4); transform-origin:50% 50%; transform-box:fill-box; }
   @keyframes pop { from { transform:scale(.2) } to { transform:scale(1) } }
 
-  .week { display:flex; gap:6px; justify-content:center; }
-  .day { width:36px; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:13px; color:var(--moss); }
+  .week { display:flex; gap:4px; justify-content:center; }
+  .day { width:34px; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:13px; color:var(--moss); }
   .slot { width:30px; height:30px; display:grid; place-items:center; background:var(--pale);
           box-shadow:0 0 0 2px var(--mist); }
   .slot.filled { box-shadow:0 0 0 2px var(--ink); background:#f3faf8; }
@@ -30,8 +30,8 @@
   .day.today .slot { box-shadow:0 0 0 2px var(--ink), 0 0 0 5px var(--glow); }
 
   .ask { font-size:17px; font-weight:600; margin-top:4px; }
-  .moods { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px 12px; width:100%; padding:0 4px; }
-  .mood { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 4px 6px; font-size:14px; }
+  .moods { display:grid; grid-template-columns:repeat(3, 1fr); gap:10px 8px; width:100%; padding:0 4px; }
+  .mood { display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; font-size:14px; }
   .foot { font-size:13px; color:var(--moss); }
   @media (prefers-reduced-motion: reduce) { .pop { animation:none; } }
 </style>
@@ -228,7 +228,7 @@
     const any = data.picks.some(Boolean);
     $("hint").hidden = any;
     $("save").disabled = !any;
-    $("sub").textContent = `This week's bouquet, ${weekLabel}`;
+    $("sub").textContent = `Week of ${weekLabel}`;
 
     $("week").innerHTML = DAYS.map((d, i) => {
       const m = MOODS.find(x => x.id === data.picks[i]);
