@@ -4,47 +4,38 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cat Pomodoro</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
-  :root { --bg:#fbf7fb; --ink:#3b3350; --soft:#8b82a3; --field:#fff; --focus:#f08aa6; --break:#6cc3b0; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#191919; --ink:#ece8f5; --soft:#9c95b3; --field:#252525; } }
-  * { box-sizing:border-box; margin:0; }
-  html, body { height:100%; }
-  body { background:var(--bg); color:var(--ink); font-family:ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif;
-         display:grid; place-items:center; overflow:hidden; }
-  .widget { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px;
-            width:100%; max-width:240px; padding:8px; --mode:var(--focus); }
-  .gear { position:absolute; top:4px; right:4px; background:none; border:0; padding:4px; cursor:pointer;
-          color:var(--soft); font-size:18px; line-height:1; border-radius:6px; }
-  .cat { position:relative; width:130px; aspect-ratio:1; }
-  .cat img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+  .widget { width:100%; max-width:260px; padding:18px 16px 16px; display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
+  .gear { position:absolute; top:12px; right:12px; padding:5px 6px; font-size:13px; }
+  .cat { position:relative; width:118px; aspect-ratio:1; }
+  .cat img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; image-rendering:auto; }
   .hidden { visibility:hidden; }
-  .mode { font-size:13px; color:var(--mode); font-weight:600; }
-  .time { font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1; }
+  .mode { font-size:15px; font-weight:600; padding:3px 8px; background:var(--mode); box-shadow:0 0 0 2px var(--ink); }
+  .time { font-family:var(--title); font-size:28px; line-height:1; margin:6px 0 2px; color:var(--forest); text-shadow:3px 3px 0 var(--pink); }
   .row { display:flex; gap:6px; margin-top:6px; }
-  button { font:inherit; font-size:13px; border:0; border-radius:999px; padding:5px 14px; cursor:pointer;
-           background:var(--mode); color:#fff; }
-  button.ghost { background:transparent; color:var(--soft); box-shadow:inset 0 0 0 1.5px var(--soft); }
-  button:focus-visible, input:focus-visible { outline:2px solid var(--ink); outline-offset:2px; }
-  .progress { font-size:12px; color:var(--soft); margin-top:4px; }
-  .dots { display:flex; flex-wrap:wrap; justify-content:center; gap:4px; max-width:180px; }
-  .dots span { width:6px; height:6px; border-radius:50%; background:var(--soft); opacity:.3; }
-  .dots span.on { background:var(--focus); opacity:1; }
+  .progress { font-size:14px; color:var(--moss); margin-top:4px; }
+  .px-dots { max-width:190px; }
 
-  .settings { display:none; width:100%; flex-direction:column; gap:8px; padding-top:22px; }
+  .settings { display:none; width:100%; flex-direction:column; gap:10px; padding-top:18px; text-align:left; }
   .settings.open { display:flex; }
   .settings.open ~ .timer-view { display:none; }
-  .settings h2 { font-size:15px; font-weight:600; }
-  .field { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:13px; }
-  .field small { display:block; color:var(--soft); font-size:11px; }
-  .field input { width:58px; font:inherit; font-size:14px; text-align:center; color:var(--ink);
-                 background:var(--field); border:1.5px solid color-mix(in srgb, var(--soft) 40%, transparent);
-                 border-radius:8px; padding:3px 4px; }
+  .settings h2 { font-family:var(--title); font-size:11px; font-weight:400; color:var(--forest); }
+  .field { display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:15px; }
+  .field small { display:block; color:var(--moss); font-size:12px; }
+  .field input { width:58px; font-family:var(--pixel); font-size:15px; text-align:center; color:var(--ink);
+                 background:var(--pale); border:0; padding:4px; box-shadow:0 0 0 2px var(--ink), inset 2px 2px 0 rgba(22,47,44,.15); }
+  .field input:focus-visible { outline:3px dashed var(--glow); outline-offset:3px; }
   .settings .row { justify-content:flex-end; }
+  .timer-view { display:flex; flex-direction:column; align-items:center; gap:6px; }
 </style>
 </head>
 <body>
-<div class="widget" id="w">
-  <button class="gear" id="gear" aria-label="Timer settings" title="Settings">⚙︎</button>
+<div class="widget px-card" id="w" style="--mode:var(--pink)">
+  <button class="gear px-btn" id="gear" aria-label="Timer settings" title="Settings">⚙</button>
 
   <form class="settings" id="settings" onsubmit="return false">
     <h2>Timer settings</h2>
@@ -54,12 +45,12 @@
     <label class="field">Long break every <small>sessions</small><input type="number" id="s-every" min="1" max="12"></label>
     <label class="field">Sessions to run <small>0 = keep going</small><input type="number" id="s-total" min="0" max="24"></label>
     <div class="row">
-      <button type="button" class="ghost" id="cancel">Cancel</button>
-      <button type="button" id="save">Save</button>
+      <button type="button" class="px-btn" id="cancel">Cancel</button>
+      <button type="button" class="px-btn primary" id="save">Save</button>
     </div>
   </form>
 
-  <div class="timer-view" style="display:flex;flex-direction:column;align-items:center;gap:4px">
+  <div class="timer-view">
     <div class="cat" aria-hidden="true">
       <img src="cat/fur_white_base.svg" alt="">
       <img id="pawL" src="cat/fur_white_left-up.svg" alt="">
@@ -69,17 +60,17 @@
     <div class="mode" id="mode">Focus</div>
     <div class="time" id="time" role="timer">25:00</div>
     <div class="row">
-      <button id="go">Start</button>
-      <button class="ghost" id="skip">Skip</button>
-      <button class="ghost" id="reset">Reset</button>
+      <button class="px-btn primary" id="go">Start</button>
+      <button class="px-btn" id="skip">Skip</button>
+      <button class="px-btn" id="reset">Reset</button>
     </div>
     <div class="progress" id="progress"></div>
-    <div class="dots" id="dots"></div>
+    <div class="px-dots" id="dots"></div>
   </div>
 </div>
 <script>
   const DEFAULTS = { focus:25, short:5, long:15, every:4, total:4 };
-  const LABEL = { focus:"Focus", short:"Short break", long:"Long break", done:"All done" };
+  const LABEL = { focus:"Focus", short:"Short break", long:"Long break", done:"All done ♥" };
   const $ = id => document.getElementById(id);
 
   function load() {
@@ -93,22 +84,20 @@
 
   function paint() {
     const m = String(Math.floor(left / 60)).padStart(2, "0"), s = String(left % 60).padStart(2, "0");
-    $("time").textContent = mode === "done" ? "🎉" : `${m}:${s}`;
+    $("time").textContent = mode === "done" ? "Yay!" : `${m}:${s}`;
     $("mode").textContent = LABEL[mode];
-    $("w").style.setProperty("--mode", mode === "focus" || mode === "done" ? "var(--focus)" : "var(--break)");
+    $("w").style.setProperty("--mode", mode === "short" || mode === "long" ? "var(--sky)" : "var(--pink)");
     $("go").textContent = end ? "Pause" : "Start";
     $("go").disabled = $("skip").disabled = mode === "done";
-    $("go").style.opacity = $("skip").style.opacity = mode === "done" ? .4 : 1;
 
-    // Progress: one dot per session when a total is set, otherwise the current long-break cycle
     const count = cfg.total > 0 ? cfg.total : cfg.every;
     const filled = cfg.total > 0 ? done : (done % cfg.every || (done && mode === "long" ? cfg.every : 0));
     $("dots").innerHTML = Array.from({ length: count }, (_, i) => `<span class="${i < filled ? "on" : ""}"></span>`).join("");
     $("progress").textContent = cfg.total > 0 ? `${Math.min(done, cfg.total)} of ${cfg.total} sessions` : `${done} sessions done`;
-    document.title = end ? `${m}:${s} · ${LABEL[mode]}` : "Cat Pomodoro";
+    document.title = end ? `${m}:${s} ${LABEL[mode]}` : "Cat Pomodoro";
   }
 
-  // Cat taps its paws while a focus session runs, rests with paws up otherwise
+  // The cat taps its paws while a focus session runs and rests with paws up otherwise
   function paws(on) {
     clearInterval(tap);
     $("pawL").classList.remove("hidden"); $("pawR").classList.remove("hidden");
@@ -116,12 +105,16 @@
     tap = setInterval(() => { flip = !flip; $("pawL").classList.toggle("hidden", flip); $("pawR").classList.toggle("hidden", !flip); }, 350);
   }
 
+  // an 8-bit style two-note chime
   function chime() {
     try {
-      const a = new AudioContext(), o = a.createOscillator(), g = a.createGain();
-      o.frequency.value = 880; g.gain.setValueAtTime(.2, a.currentTime);
-      g.gain.exponentialRampToValueAtTime(.001, a.currentTime + 1);
-      o.connect(g).connect(a.destination); o.start(); o.stop(a.currentTime + 1);
+      const a = new AudioContext();
+      [[660, 0], [990, .16]].forEach(([f, t]) => {
+        const o = a.createOscillator(), g = a.createGain();
+        o.type = "square"; o.frequency.value = f;
+        g.gain.setValueAtTime(.08, a.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + t + .35);
+        o.connect(g).connect(a.destination); o.start(a.currentTime + t); o.stop(a.currentTime + t + .4);
+      });
     } catch (e) {}
   }
 
@@ -149,7 +142,6 @@
 
   function reset() { stop(); mode = "focus"; done = 0; left = cfg.focus * 60; paint(); }
 
-  // Settings panel
   const keys = ["focus", "short", "long", "every", "total"];
   function openSettings(open) {
     $("settings").classList.toggle("open", open);
@@ -160,8 +152,7 @@
   $("save").onclick = () => {
     keys.forEach(k => {
       const el = $("s-" + k), n = Math.round(Number(el.value));
-      const min = Number(el.min), max = Number(el.max);
-      cfg[k] = Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : DEFAULTS[k];
+      cfg[k] = Number.isFinite(n) ? Math.min(Number(el.max), Math.max(Number(el.min), n)) : DEFAULTS[k];
     });
     persist(); openSettings(false); reset();
   };
@@ -171,5 +162,6 @@
   $("reset").onclick = reset;
   paint();
 </script>
+<script src="theme.js"></script>
 </body>
 </html>

@@ -6,107 +6,44 @@
 <title>Photo of the day</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cherry+Bomb+One&family=Fredoka:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
 <style>
-  :root {
-    --wood:#5a380b; --line:#411308; --cream:#f6dcbc; --paper:#fcefe0; --glow:#f7b774; --muted:#875702;
-    --accent:#cb5925; --peach:#f3b98a;
-    --round:"Fredoka", ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif;
-    --bubble:"Cherry Bomb One", "Fredoka", ui-rounded, system-ui, sans-serif;
-  }
-  * { box-sizing:border-box; margin:0; }
-  html, body { height:100%; }
-  body {
-    background:
-      linear-gradient(180deg, rgba(237,134,43,.18), rgba(65,19,8,.32)),
-      var(--bg-image, none) center / cover no-repeat,
-      linear-gradient(180deg, #ed862b 0%, #dc5713 38%, #a04005 70%, #411308 100%);
-    font-family:var(--round); color:var(--wood);
-    display:grid; place-items:center; overflow:hidden; padding:14px; position:relative;
-  }
-  body::before {
-    content:""; position:absolute; left:50%; top:50%; width:90vmin; height:90vmin; transform:translate(-50%,-50%);
-    background:radial-gradient(circle, rgba(247,183,116,.35) 0%, transparent 60%); pointer-events:none;
-  }
-  body::after {
-    content:""; position:fixed; inset:0; pointer-events:none; opacity:.16; mix-blend-mode:multiply; z-index:5;
-    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .3 0 0 0 0 .2 0 0 0 0 .1 0 0 0 .9 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  }
-  .mote { position:absolute; bottom:-10px; width:4px; height:4px; border-radius:50%; background:var(--glow);
-          box-shadow:0 0 8px 2px rgba(247,183,116,.8); opacity:0; animation:drift linear infinite; pointer-events:none; }
-  @keyframes drift { 0% { transform:translate(0,0); opacity:0 } 15% { opacity:.9 } 85% { opacity:.6 } 100% { transform:translate(30px,-105vh); opacity:0 } }
-
-  /* same wooden-framed card as the mood garden */
-  .card {
-    position:relative; z-index:1; width:100%; max-width:480px; padding:16px 16px 14px;
-    background:var(--paper); border:8px solid var(--wood); border-radius:22px; outline:2.5px solid var(--line);
-    box-shadow:inset 0 0 0 2px var(--cream), 8px 9px 0 rgba(65,19,8,.55), 0 0 50px rgba(237,134,43,.5);
-    display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center;
-  }
-  h1 { font-family:var(--bubble); font-weight:400; font-size:30px; line-height:1; color:var(--accent);
-       letter-spacing:.5px; text-shadow:2px 2px 0 var(--cream), 3px 3px 0 rgba(65,19,8,.25); }
-  .sub { font-size:13px; font-weight:500; color:var(--muted); margin-top:-6px; }
-
-  .photo {
-    position:relative; width:100%; aspect-ratio:4/3; border-radius:16px; overflow:hidden;
-    background:var(--cream); border:2.5px solid var(--line); box-shadow:4px 5px 0 rgba(65,19,8,.35);
-  }
-  .slide { position:absolute; inset:0; opacity:0; transition:opacity 1.1s ease; }
+  .card { width:100%; max-width:480px; padding:20px 20px 18px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
+  .photo { position:relative; width:100%; aspect-ratio:4/3; overflow:hidden; background:var(--pale);
+           box-shadow:0 0 0 3px var(--ink), 0 0 0 7px var(--sage), 0 0 0 10px var(--ink); margin:8px 0 6px; }
+  .slide { position:absolute; inset:0; opacity:0; transition:opacity .8s steps(6); }
   .slide.show { opacity:1; }
   .slide .fill { position:absolute; inset:-24px; background-size:cover; background-position:center;
-                 filter:blur(20px) sepia(.4) saturate(1.1) brightness(.92); }
-  .slide img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center;
-               filter:sepia(.15) saturate(1.05) contrast(1.02); }
-  /* golden-hour wash and soft vignette */
-  .photo::after {
-    content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
-    background:linear-gradient(125deg, rgba(247,183,116,.3) 0%, transparent 35%),
-               radial-gradient(ellipse at center, transparent 58%, rgba(90,56,11,.4) 100%);
-  }
-  .empty { position:absolute; inset:0; display:grid; place-items:center; text-align:center; padding:24px; z-index:3;
-           font-size:15px; font-weight:500; line-height:1.5; color:var(--muted); }
-
+                 filter:blur(18px) saturate(.8) brightness(.95); }
+  .slide img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:center; image-rendering:auto; }
+  /* soft rainy-window tint and pixel corner notches */
+  .photo::after { content:""; position:absolute; inset:0; pointer-events:none; z-index:2;
+    background:linear-gradient(160deg, rgba(180,225,221,.18), transparent 40%, rgba(22,47,44,.18)); }
+  .empty { position:absolute; inset:0; display:grid; place-items:center; padding:24px; z-index:3; font-size:16px; color:var(--moss); }
   .empty[hidden] { display:none; }
-
-  .bar { display:flex; align-items:center; justify-content:center; gap:12px; }
-  button {
-    font-family:var(--round); font-weight:600; cursor:pointer; color:var(--wood); background:var(--cream);
-    width:42px; height:42px; border-radius:50%; font-size:22px; line-height:1;
-    border:2px solid var(--line); box-shadow:3px 3px 0 var(--line); transition:transform .1s, box-shadow .1s, background .15s;
-  }
-  button:hover { background:var(--glow); }
-  button:active { transform:translate(3px,3px); box-shadow:0 0 0 var(--line); }
-  button:disabled { opacity:.45; cursor:default; }
-  button:focus-visible { outline:3px solid var(--glow); outline-offset:2px; }
-  button.today { width:auto; padding:0 18px; border-radius:999px; font-size:14px; font-weight:500; background:var(--peach); }
-  button.today:hover { background:var(--glow); }
-  button[hidden] { display:none; }
-
-  .dots { display:flex; flex-wrap:wrap; justify-content:center; gap:7px; max-width:260px; min-height:10px; }
-  .dots span { width:9px; height:9px; border-radius:50%; background:var(--cream); border:1.5px solid rgba(90,56,11,.45); }
-  .dots span.on { background:var(--accent); border-color:var(--line); transform:scale(1.2); }
-  .dots span.day:not(.on) { border-color:var(--accent); border-width:2px; }
-  .count { font-size:13px; font-weight:500; color:var(--muted); }
-
-  @media (prefers-reduced-motion: reduce) { .slide { transition:none; } .mote { display:none; } }
+  .bar { display:flex; align-items:center; justify-content:center; gap:10px; }
+  .bar .arrow { width:40px; height:36px; font-family:var(--title); font-size:12px; padding:0; }
+  .count { font-size:14px; color:var(--moss); }
+  .px-dots { max-width:260px; min-height:10px; }
+  @media (prefers-reduced-motion: reduce) { .slide { transition:none; } }
 </style>
 </head>
 <body>
-
-<main class="card">
-  <h1>Photo of the day</h1>
-  <p class="sub" id="sub">&nbsp;</p>
+<main class="card px-card">
+  <h1 class="px-title">Photo of the day</h1>
+  <p class="px-sub" id="sub">&nbsp;</p>
   <div class="photo" id="photo">
     <div class="slide" id="slideA"><div class="fill"></div><img alt=""></div>
     <div class="slide" id="slideB"><div class="fill"></div><img alt=""></div>
     <div class="empty" id="empty">Loading your photos…</div>
   </div>
   <div class="bar">
-    <button id="prev" aria-label="Previous photo">‹</button>
-    <button class="today" id="today" hidden>Today's photo ♡</button>
-    <button id="next" aria-label="Next photo">›</button>
+    <button class="px-btn arrow" id="prev" aria-label="Previous photo">◀</button>
+    <button class="px-btn primary" id="today" hidden>Today's photo ♥</button>
+    <button class="px-btn arrow" id="next" aria-label="Next photo">▶</button>
   </div>
-  <div class="dots" id="dots"></div>
+  <div class="px-dots" id="dots"></div>
 </main>
 
 <script>
@@ -117,8 +54,6 @@
   const GITHUB_REPO = "";
   const BRANCH = "main";
   const FOLDER = "pics";
-  /* Your background image: put it in the repo and write its path here */
-  const BACKGROUND = "background.jpg";
   /* Optional: list files here by hand to skip the GitHub lookup, e.g. ["beach.jpg", "tea.png"] */
   const MANUAL_LIST = [];
   /* -------------------------------- */
@@ -127,27 +62,7 @@
   const IMAGE = /\.(jpe?g|png|gif|webp|avif)$/i;
   const todayKey = new Date().toLocaleDateString("en-CA");
   const dayNumber = Math.floor(new Date(todayKey + "T00:00:00Z") / 86400000);
-
   let photos = [], current = 0, dailyIndex = 0, front = $("slideA"), back = $("slideB");
-
-  // Use the background image if it exists; otherwise the sunset gradient stays
-  if (BACKGROUND) {
-    const bg = new Image();
-    bg.onload = () => document.body.style.setProperty("--bg-image", `url("${BACKGROUND}")`);
-    bg.src = BACKGROUND;
-  }
-
-  // floating dust motes
-  for (let i = 0; i < 14; i++) {
-    const m = document.createElement("span");
-    m.className = "mote";
-    m.style.left = Math.random() * 100 + "%";
-    m.style.animationDuration = 9 + Math.random() * 10 + "s";
-    m.style.animationDelay = -Math.random() * 15 + "s";
-    const size = 2 + Math.random() * 4;
-    m.style.width = m.style.height = size + "px";
-    document.body.appendChild(m);
-  }
 
   const store = {
     get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
@@ -159,8 +74,7 @@
     const host = location.hostname.match(/^([^.]+)\.github\.io$/);
     if (!host) return null;
     const first = location.pathname.split("/").filter(Boolean)[0];
-    const repo = first && !first.includes(".") ? first : `${host[1]}.github.io`;
-    return { user: host[1], repo };
+    return { user: host[1], repo: first && !first.includes(".") ? first : `${host[1]}.github.io` };
   }
 
   async function loadList() {
@@ -172,22 +86,17 @@
       if (!info) throw new Error("no repo");
       const res = await fetch(`https://api.github.com/repos/${info.user}/${info.repo}/contents/${FOLDER}?ref=${BRANCH}`);
       if (!res.ok) throw new Error(res.status);
-      const files = (await res.json())
-        .filter(f => f.type === "file" && IMAGE.test(f.name))
-        .map(f => f.name)
+      const files = (await res.json()).filter(f => f.type === "file" && IMAGE.test(f.name)).map(f => f.name)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
       store.set("photoList", { day: todayKey, files });
       return files;
-    } catch (e) {
-      return cached ? cached.files : [];
-    }
+    } catch (e) { return cached ? cached.files : []; }
   }
 
   function paintDots() {
     const box = $("dots");
-    if (photos.length > 20) { box.innerHTML = `<span class="count">${current + 1} / ${photos.length}</span>`; return; }
-    box.innerHTML = photos.map((_, i) =>
-      `<span class="${i === current ? "on" : ""} ${i === dailyIndex ? "day" : ""}"></span>`).join("");
+    if (photos.length > 20) { box.innerHTML = `<b class="count" style="font-weight:500">${current + 1} / ${photos.length}</b>`; return; }
+    box.innerHTML = photos.map((_, i) => `<span class="${i === current ? "on" : ""} ${i === dailyIndex ? "mark" : ""}"></span>`).join("");
   }
 
   function show(i) {
@@ -211,7 +120,7 @@
     photos = await loadList();
     if (!photos.length) {
       $("empty").textContent = repoInfo() || MANUAL_LIST.length
-        ? `No photos in the “${FOLDER}” folder yet. Add some and refresh ♡`
+        ? `Add photos to the “${FOLDER}” folder, then refresh.`
         : "Open this page from GitHub Pages, or fill in GITHUB_USER and GITHUB_REPO in the file.";
       $("prev").disabled = $("next").disabled = true;
       return;
@@ -230,7 +139,6 @@
     if (e.key === "ArrowLeft") show(current - 1);
     if (e.key === "ArrowRight") show(current + 1);
   });
-
   let startX = null;
   $("photo").addEventListener("touchstart", e => startX = e.touches[0].clientX, { passive: true });
   $("photo").addEventListener("touchend", e => {
@@ -239,9 +147,9 @@
     if (Math.abs(dx) > 40) show(current + (dx < 0 ? 1 : -1));
     startX = null;
   });
-
   setInterval(() => { if (new Date().toLocaleDateString("en-CA") !== todayKey) location.reload(); }, 60000);
   init();
 </script>
+<script src="theme.js"></script>
 </body>
 </html>

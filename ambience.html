@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ambience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Pixelify+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+  .card { width:100%; max-width:380px; padding:20px 18px 16px; display:flex; flex-direction:column; align-items:center; gap:12px; text-align:center; }
+  .intro { display:flex; flex-direction:column; gap:8px; align-items:center; }
+
+  .player { width:100%; display:flex; align-items:center; gap:14px; padding:12px; }
+  .deck { position:relative; width:84px; height:84px; flex:none; }
+  .record { width:100%; height:100%; animation:spin 2.4s steps(8) infinite; animation-play-state:paused; }
+  .playing .record { animation-play-state:running; }
+  @keyframes spin { to { transform:rotate(360deg) } }
+  .arm { position:absolute; top:-6px; right:-10px; width:36px; height:60px; transform-origin:26px 6px;
+         transform:rotate(-26deg); transition:transform .5s steps(4); }
+  .playing .arm { transform:rotate(0deg); }
+  .now { flex:1; min-width:0; text-align:left; display:flex; flex-direction:column; gap:6px; }
+  .label { font-size:13px; color:var(--moss); }
+  .track { font-size:17px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .controls { display:flex; gap:4px; align-items:center; }
+  .controls .px-btn { width:36px; height:32px; padding:0; display:grid; place-items:center; }
+  .controls .px-btn svg { width:12px; height:12px; }
+  .vol { display:flex; align-items:center; gap:8px; }
+  .vol svg { flex:none; }
+
+  .side { display:flex; flex-direction:column; gap:8px; width:100%; }
+  .mixer-title { font-size:17px; font-weight:600; }
+  .mixer { display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%; padding:0 3px; }
+  .sound { display:flex; flex-direction:column; gap:6px; padding:8px 10px; text-align:left; }
+  .sound.on { background:var(--glow); }
+  .sound button { all:unset; cursor:pointer; display:flex; align-items:center; gap:8px; font-family:var(--pixel); font-size:16px; font-weight:500; color:var(--ink); }
+  .sound button:focus-visible { outline:3px dashed var(--forest); outline-offset:3px; }
+  .sound button svg { flex:none; }
+  .sound .state { margin-left:auto; font-size:13px; color:var(--moss); }
+  .foot { font-size:13px; color:var(--moss); }
+
+  /* ---- banner layout (ambience-banner.html) ---- */
+  body.banner { padding:12px; }
+  .banner .card { max-width:1200px; padding:18px 22px; display:grid; grid-template-columns:auto minmax(280px, 1.1fr) 2fr; gap:24px; text-align:left; }
+  .banner .intro { align-items:flex-start; max-width:210px; }
+  .banner .mixer { grid-template-columns:repeat(4, minmax(0, 1fr)); }
+  .banner .sound .state { display:none; }
+  .banner .sound { padding:8px; }
+  .banner .sound button { font-size:14px; gap:6px; white-space:nowrap; }
+  @media (max-width: 980px) {
+    .banner .card { grid-template-columns:minmax(260px, 1fr) 1.4fr; }
+    .banner .intro { grid-column:1 / -1; flex-direction:row; align-items:baseline; gap:14px; max-width:none; }
+    .banner .mixer { grid-template-columns:1fr 1fr; }
+    .banner .sound .state { display:inline; }
+  }
+  @media (max-width: 620px) {
+    .banner .card { grid-template-columns:1fr; text-align:center; }
+    .banner .intro { flex-direction:column; align-items:center; gap:8px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .record { animation:none; } .arm { transition:none; } }
+</style>
+</head>
+<body>
+<main class="card px-card">
+  <div class="intro">
+    <h1 class="px-title">Ambience</h1>
+    <p class="px-sub">Put on a song and listen to the rain ♥</p>
+  </div>
+
+  <section class="player px-panel" id="player">
+    <div class="deck" aria-hidden="true">
+      <svg class="record" id="record" viewBox="0 0 24 24"></svg>
+      <svg class="arm" viewBox="0 0 12 20">
+        <rect x="7" y="0" width="4" height="4" fill="#162f2c"/><rect x="8" y="1" width="2" height="2" fill="#d1ebe8"/>
+        <rect x="8" y="4" width="2" height="9" fill="#162f2c"/><rect x="7" y="12" width="2" height="2" fill="#162f2c"/>
+        <rect x="5" y="13" width="3" height="2" fill="#162f2c"/><rect x="3" y="14" width="4" height="4" fill="#162f2c"/>
+        <rect x="4" y="15" width="2" height="2" fill="#ebbbd8"/>
+      </svg>
+    </div>
+    <div class="now">
+      <span class="label">Now playing</span>
+      <span class="track" id="track">Loading songs…</span>
+      <div class="controls">
+        <button class="px-btn" id="prev" aria-label="Previous song"><svg viewBox="0 0 6 6"><rect x="0" y="0" width="1" height="6" fill="currentColor"/><rect x="4" y="0" width="1" height="6" fill="currentColor"/><rect x="3" y="1" width="1" height="4" fill="currentColor"/><rect x="2" y="2" width="1" height="2" fill="currentColor"/><rect x="5" y="0" width="1" height="6" fill="currentColor"/></svg></button>
+        <button class="px-btn primary" id="play" aria-label="Play"><svg id="playIcon" viewBox="0 0 6 6"></svg></button>
+        <button class="px-btn" id="next" aria-label="Next song"><svg viewBox="0 0 6 6"><rect x="5" y="0" width="1" height="6" fill="currentColor"/><rect x="0" y="0" width="2" height="6" fill="currentColor"/><rect x="2" y="1" width="1" height="4" fill="currentColor"/><rect x="3" y="2" width="1" height="2" fill="currentColor"/></svg></button>
+      </div>
+      <label class="vol"><svg viewBox="0 0 7 7" width="14" height="14" aria-hidden="true"><rect x="3" y="0" width="1" height="5" fill="#162f2c"/><rect x="4" y="0" width="2" height="1" fill="#162f2c"/><rect x="5" y="1" width="1" height="1" fill="#162f2c"/><rect x="1" y="4" width="3" height="3" fill="#162f2c"/></svg><input class="px-range" type="range" id="musicVol" min="0" max="1" step="0.01" aria-label="Music volume"></label>
+    </div>
+  </section>
+
+  <div class="side">
+    <p class="mixer-title">Cozy sounds</p>
+    <div class="mixer" id="mixer"></div>
+    <p class="foot">Mix the sounds with or without music</p>
+  </div>
+</main>
+<audio id="audio" preload="none"></audio>
+
+<script>
+  /* ---------- Settings ----------
+     Put your songs in a "music" folder in the repo. On GitHub Pages the user/repo are detected automatically. */
+  const GITHUB_USER = "";
+  const GITHUB_REPO = "";
+  const BRANCH = "main";
+  const FOLDER = "music";
+  /* Optional: list songs by hand to skip the GitHub lookup, e.g. ["rainy-cafe.mp3", "sunset.mp3"] */
+  const MANUAL_LIST = [];
+  /* -------------------------------- */
+
+  const $ = id => document.getElementById(id);
+  const AUDIO = /\.(mp3|m4a|ogg|oga|wav|aac|opus|flac)$/i;
+  const todayKey = new Date().toLocaleDateString("en-CA");
+  const store = {
+    get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  };
+  const saved = store.get("ambience") || {};
+  const settings = { music: saved.music ?? .7, sounds: saved.sounds || {}, track: saved.track || 0 };
+  const save = () => store.set("ambience", settings);
+
+  /* ---------- Pixel art helpers ---------- */
+  function rects(rows, pal) {
+    let r = "";
+    rows.forEach((row, y) => { for (let x = 0; x < row.length;) {
+      const c = row[x]; let e = x + 1; while (e < row.length && row[e] === c) e++;
+      if (pal[c]) r += `<rect x="${x}" y="${y}" width="${e - x}" height="1" fill="${pal[c]}"/>`;
+      x = e;
+    } });
+    return r;
+  }
+  // the record: rings, grooves, a pink label with a heart
+  (function drawRecord() {
+    const rows = [];
+    for (let y = 0; y < 24; y++) { let row = "";
+      for (let x = 0; x < 24; x++) {
+        const d = Math.hypot(x + .5 - 12, y + .5 - 12);
+        row += d > 11.8 ? "." : d > 11 ? "o" : d > 5.2 ? ((Math.floor(d * 1.2) % 2) ? "g" : "d") : d > 4.4 ? "o" : "l";
+      } rows.push(row.split(""));
+    }
+    [[10,10],[13,10],[9,11],[10,11],[11,11],[12,11],[13,11],[14,11],[10,12],[11,12],[12,12],[13,12],[11,13],[12,13]].forEach(([x,y]) => rows[y][x] = "w");
+    rows[11][11] = "o"; rows[11][12] = "o"; rows[12][11] = "o"; rows[12][12] = "o";
+    [[5,6],[6,5],[7,4],[4,7]].forEach(([x,y]) => rows[y][x] = "h");
+    $("record").innerHTML = rects(rows, { o:"#162f2c", d:"#1f4038", g:"#2a4a41", l:"#ebbbd8", w:"#f6fbfa", h:"#587463" });
+  })();
+  const PLAY = rects(["c.....","ccc...","ccccc.","ccccc.","ccc...","c....."].map(r => r.split("")), { c:"currentColor" });
+  const PAUSE = rects(["cc..cc","cc..cc","cc..cc","cc..cc","cc..cc","cc..cc"].map(r => r.split("")), { c:"currentColor" });
+
+  // 10×10 icons for the sounds
+  const ICONS = {
+    rain: { pal:{ o:"#162f2c", p:"#f6fbfa", s:"#bdccbe", b:"#6f95a8" }, rows:[
+      "..oooo....", ".oppppooo.", "opppppppo.", "oppppsppso", ".oooooooo.", "..........", ".b..b..b..", "b..b..b...", "...b..b...", ".........."] },
+    fire: { pal:{ o:"#162f2c", r:"#e3a27f", y:"#f5d79f", w:"#786a5e" }, rows:[
+      "....o.....", "...oro....", "...orro...", "..orrro.o.", ".orryrroro", ".oryyyrro.", ".oryyyyro.", "..oryyro..", ".wwoooowww", ".........."] },
+    vinyl: { pal:{ o:"#162f2c", d:"#1f4038", g:"#3e5a50", l:"#ebbbd8", h:"#869881" }, rows:[
+      "...oooo...", ".oodddhoo.", ".oddgddho.", "odgoolgddo", "odgollgddo", "oddgllgddo", "oddgoogddo", ".oddggddo.", ".oodddoo..", "...oooo..."] },
+    wind: { pal:{ o:"#162f2c", l:"#73aa69", g:"#45755c" }, rows:[
+      "......ooo.", "....oollo.", "...ollllo.", "..olllgo..", ".ollgllo..", ".olgllo...", ".oglloo...", "..goo.....", ".g........", ".........."] },
+  };
+  const icon = id => `<svg viewBox="0 0 10 10" width="20" height="20" aria-hidden="true">${rects(ICONS[id].rows.map(r => r.split("")), ICONS[id].pal)}</svg>`;
+
+  /* ================= Music ================= */
+  const audio = $("audio");
+  let songs = [], current = settings.track;
+
+  function repoInfo() {
+    if (GITHUB_USER && GITHUB_REPO) return { user: GITHUB_USER, repo: GITHUB_REPO };
+    const host = location.hostname.match(/^([^.]+)\.github\.io$/);
+    if (!host) return null;
+    const first = location.pathname.split("/").filter(Boolean)[0];
+    return { user: host[1], repo: first && !first.includes(".") ? first : `${host[1]}.github.io` };
+  }
+  async function loadSongs() {
+    if (MANUAL_LIST.length) return MANUAL_LIST.slice();
+    const cached = store.get("musicList");
+    if (cached && cached.day === todayKey && cached.files.length) return cached.files;
+    const info = repoInfo();
+    try {
+      if (!info) throw new Error("no repo");
+      const res = await fetch(`https://api.github.com/repos/${info.user}/${info.repo}/contents/${FOLDER}?ref=${BRANCH}`);
+      if (!res.ok) throw new Error(res.status);
+      const files = (await res.json()).filter(f => f.type === "file" && AUDIO.test(f.name)).map(f => f.name)
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      store.set("musicList", { day: todayKey, files });
+      return files;
+    } catch (e) { return cached ? cached.files : []; }
+  }
+  const pretty = f => decodeURIComponent(f).replace(AUDIO, "").replace(/[-_]+/g, " ").trim();
+
+  function setTrack(i, autoplay) {
+    if (!songs.length) return;
+    current = (i + songs.length) % songs.length;
+    audio.src = `${FOLDER}/${encodeURIComponent(songs[current])}`;
+    $("track").textContent = pretty(songs[current]);
+    settings.track = current; save();
+    if (autoplay) audio.play().catch(() => {});
+  }
+  function paintPlay() {
+    const on = !audio.paused;
+    $("player").classList.toggle("playing", on);
+    $("playIcon").innerHTML = on ? PAUSE : PLAY;
+    $("play").setAttribute("aria-label", on ? "Pause" : "Play");
+  }
+  $("play").onclick = () => { if (!songs.length) return; audio.paused ? audio.play().catch(() => {}) : audio.pause(); };
+  $("prev").onclick = () => setTrack(current - 1, !audio.paused);
+  $("next").onclick = () => setTrack(current + 1, !audio.paused);
+  audio.onplay = audio.onpause = paintPlay;
+  audio.onended = () => setTrack(current + 1, true);
+  audio.volume = settings.music;
+  $("musicVol").value = settings.music;
+  $("musicVol").oninput = e => { audio.volume = settings.music = +e.target.value; save(); };
+  paintPlay();
+
+  (async () => {
+    songs = await loadSongs();
+    if (!songs.length) {
+      $("track").textContent = repoInfo() || MANUAL_LIST.length ? "Add songs to your music folder" : "Open from GitHub Pages to load songs";
+      ["prev", "play", "next"].forEach(id => $(id).disabled = true);
+      return;
+    }
+    setTrack(current < songs.length ? current : 0, false);
+  })();
+
+  /* ================= Cozy sounds (made in the browser, no files needed) ================= */
+  let ctx = null, noise = {};
+  const SOUNDS = [
+    { id:"rain",  label:"Rain" }, { id:"fire", label:"Fireplace" },
+    { id:"vinyl", label:"Vinyl" }, { id:"wind", label:"Wind" },
+  ];
+  const nodes = {};
+
+  function initAudio() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const len = ctx.sampleRate * 4;
+    const white = ctx.createBuffer(1, len, ctx.sampleRate), brown = ctx.createBuffer(1, len, ctx.sampleRate);
+    const w = white.getChannelData(0), b = brown.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) { w[i] = Math.random() * 2 - 1; last = (last + .02 * (Math.random() * 2 - 1)) / 1.02; b[i] = last * 3.5; }
+    noise = { white, brown };
+  }
+  const loop = buf => { const s = ctx.createBufferSource(); s.buffer = buf; s.loop = true; s.start(); return s; };
+  const filter = (type, freq, q = .7) => { const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q; return f; };
+  const gain = v => { const g = ctx.createGain(); g.gain.value = v; return g; };
+  function burst(out, { dur, freq, level, type = "highpass" }) {
+    const s = ctx.createBufferSource(); s.buffer = noise.white;
+    const f = filter(type, freq, type === "bandpass" ? 1.5 : .7), g = gain(0), t = ctx.currentTime;
+    g.gain.setValueAtTime(level, t); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+    s.connect(f).connect(g).connect(out); s.start(t, Math.random() * 3, dur + .02);
+  }
+  function scheduler(id, out, min, max, make) {
+    const tick = () => { if (nodes[id].on) make(out); nodes[id].timer = setTimeout(tick, min + Math.random() * (max - min)); };
+    tick();
+  }
+  function build(id) {
+    const out = gain(0); out.connect(ctx.destination);
+    nodes[id] = { out, on: false };
+    if (id === "rain") {
+      loop(noise.white).connect(filter("highpass", 500)).connect(filter("lowpass", 5000)).connect(gain(.28)).connect(out);
+      loop(noise.brown).connect(filter("lowpass", 900)).connect(gain(.35)).connect(out);
+      scheduler(id, out, 20, 120, o => burst(o, { dur: .03, freq: 2500 + Math.random() * 3000, level: .05 + Math.random() * .08 }));
+    }
+    if (id === "fire") {
+      loop(noise.brown).connect(filter("lowpass", 420)).connect(gain(.55)).connect(out);
+      scheduler(id, out, 40, 260, o => burst(o, { dur: .02 + Math.random() * .05, freq: 1200 + Math.random() * 3500, level: .12 + Math.random() * .35 }));
+    }
+    if (id === "vinyl") {
+      loop(noise.white).connect(filter("highpass", 3500)).connect(gain(.018)).connect(out);
+      scheduler(id, out, 60, 520, o => burst(o, { dur: .004 + Math.random() * .01, freq: 1800 + Math.random() * 2000, level: .25 + Math.random() * .4, type: "bandpass" }));
+    }
+    if (id === "wind") {
+      const bp = filter("bandpass", 420, .9), g = gain(.6);
+      loop(noise.brown).connect(bp).connect(g).connect(out);
+      const lfo = ctx.createOscillator(), depth = gain(260); lfo.frequency.value = .07; lfo.connect(depth).connect(bp.frequency); lfo.start();
+      const lfo2 = ctx.createOscillator(), depth2 = gain(.35); lfo2.frequency.value = .11; lfo2.connect(depth2).connect(g.gain); lfo2.start();
+    }
+  }
+  function setSound(id, on, vol) {
+    initAudio(); if (ctx.state === "suspended") ctx.resume();
+    if (!nodes[id]) build(id);
+    nodes[id].on = on;
+    nodes[id].out.gain.setTargetAtTime(on ? vol : 0, ctx.currentTime, .4);
+  }
+
+  $("mixer").innerHTML = SOUNDS.map(s => {
+    const st = settings.sounds[s.id] || { vol: .5 };
+    return `<div class="sound px-panel" id="s-${s.id}">
+      <button data-id="${s.id}" aria-pressed="false">${icon(s.id)}${s.label}<span class="state">off</span></button>
+      <input class="px-range" type="range" min="0" max="1" step="0.01" value="${st.vol}" data-id="${s.id}" aria-label="${s.label} volume">
+    </div>`;
+  }).join("");
+  function paintSound(id) {
+    const st = settings.sounds[id], box = $("s-" + id);
+    box.classList.toggle("on", st.on);
+    box.querySelector("button").setAttribute("aria-pressed", st.on);
+    box.querySelector(".state").textContent = st.on ? "on" : "off";
+  }
+  SOUNDS.forEach(s => { settings.sounds[s.id] = { vol: .5, ...(settings.sounds[s.id] || {}), on: false }; paintSound(s.id); });
+  $("mixer").querySelectorAll("button").forEach(b => b.onclick = () => {
+    const st = settings.sounds[b.dataset.id]; st.on = !st.on;
+    setSound(b.dataset.id, st.on, st.vol); paintSound(b.dataset.id); save();
+  });
+  $("mixer").querySelectorAll("input").forEach(r => r.oninput = () => {
+    const st = settings.sounds[r.dataset.id]; st.vol = +r.value;
+    if (st.on) setSound(r.dataset.id, true, st.vol);
+    save();
+  });
+</script>
+<script src="theme.js"></script>
+</body>
+</html>
